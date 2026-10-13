@@ -150,7 +150,17 @@ Le protocole Modbus TCP ne prévoit ni mot de passe ni chiffrement : tout appare
 - **Pilotez à distance en passant par Home Assistant** (son accès distant ou un VPN), jamais en ouvrant un accès direct à la machine.
 - **Protégez Home Assistant** : c'est lui qui porte les comptes et les mots de passe. Activez la double authentification.
 - **Invités** : faites-les passer par le Wi-Fi invité de votre box, qui est isolé du réseau où se trouve la machine.
-- **Installations professionnelles ou réseau partagé** : placez la machine dans un VLAN dédié, et n'autorisez dans le pare-feu que Home Assistant vers la machine, en TCP sur le port 502.
+
+### Installations professionnelles ou réseau partagé
+
+C'est la méthode des gestions techniques de bâtiment : on ne sécurise pas le Modbus lui-même, on l'enferme dans une zone technique, et les personnes s'identifient sur la supervision. Ici, Home Assistant joue le rôle de la supervision.
+
+- **Réseau technique séparé** : placez la machine dans un VLAN dédié, distinct des postes de travail et du Wi-Fi.
+- **Pare-feu en liste blanche** : bloquez tout entre les réseaux, et n'ouvrez qu'un flux, de Home Assistant vers la machine, en TCP sur le port 502.
+- **Un seul maître** : Home Assistant est le seul à interroger la machine en Modbus. Les utilisateurs passent par lui, avec leurs comptes et leurs droits.
+- **Accès distant des mainteneurs** : par un VPN vers Home Assistant, jamais par un accès direct à la machine.
+- **Sortie Internet de la machine** : bloquez-la si vous n'utilisez pas le pilotage à distance de l'application mobile.
+- **Passerelle RS485 vers Ethernet** : si la machine est raccordée par une passerelle Modbus, celle-ci n'authentifie pas davantage ses clients. Placez-la dans le même réseau technique et changez son mot de passe d'administration.
 
 ## État de la version 0.2.0
 
