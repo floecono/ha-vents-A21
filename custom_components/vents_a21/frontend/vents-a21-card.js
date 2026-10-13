@@ -287,22 +287,42 @@ const STYLE = `
   [hidden] { display: none !important; }
 `;
 
-// The two air streams. "through" crosses the exchanger, where the stream
-// changes temperature; "around" is the same stream going past it when the
-// bypass is open, and "gap" the part of that detour drawn over the other
-// stream.
+// The two air streams, in four pieces each: the trunk in, the branch that
+// crosses the exchanger (where the stream changes temperature), the branch
+// that goes around it when the bypass is open, and the trunk out. The two
+// branches share the junctions, so their widths can follow the position of
+// the bypass damper: a damper at 40 % draws a thin stream around the
+// exchanger and a thicker one through it.
 const STREAMS = {
   fresh: {
-    through: "M12 62 H150 L250 138 H380",
-    around: "M12 62 H146 L134 100 L200 164 L250 138 H380",
-    gap: "M146 62 L134 100 L200 164 L250 138",
+    in: "M12 62 H148",
+    through: "M148 62 L250 138",
+    around: "M148 62 L134 100 L200 164 L250 138",
+    out: "M250 138 H380",
   },
   stale: {
-    through: "M388 62 H250 L150 138 H20",
-    around: "M388 62 H254 L266 100 L200 164 L150 138 H20",
-    gap: "M254 62 L266 100 L200 164 L150 138",
+    in: "M388 62 H252",
+    through: "M252 62 L150 138",
+    around: "M252 62 L266 100 L200 164 L150 138",
+    out: "M150 138 H20",
   },
 };
+const STREAM_PIECES = ["in", "through", "around", "out"];
+const STREAM_WIDTH = 9; // of a full stream, matching .unit .stream
+const MOTION_WIDTH = 2.5;
+const GAP_EXTRA = 7; // the mask under the detour is this much wider
+
+function streamMarkup(name) {
+  const paths = STREAMS[name];
+  return `<g data-stream="${name}">
+    <path class="gap" d="${paths.around}"/>
+    ${STREAM_PIECES.map(
+      (piece) =>
+        `<path class="stream" data-piece="${piece}" d="${paths[piece]}" stroke="url(#g-${name})"/>`,
+    ).join("")}
+    ${STREAM_PIECES.map((piece) => `<path class="motion" data-piece="${piece}" d="${paths[piece]}"/>`).join("")}
+  </g>`;
+}
 
 const TEMPLATE = `
   <ha-card>
@@ -340,16 +360,8 @@ const TEMPLATE = `
         <text class="side" x="388" y="104" text-anchor="end" data-text="inside"></text>
 
         <g class="streams">
-          <g data-stream="stale">
-            <path class="gap"/>
-            <path class="stream" d="${STREAMS.stale.through}" stroke="url(#g-stale)"/>
-            <path class="motion" d="${STREAMS.stale.through}"/>
-          </g>
-          <g data-stream="fresh">
-            <path class="gap"/>
-            <path class="stream" d="${STREAMS.fresh.through}" stroke="url(#g-fresh)"/>
-            <path class="motion" d="${STREAMS.fresh.through}"/>
-          </g>
+          ${streamMarkup("stale")}
+          ${streamMarkup("fresh")}
         </g>
         <path class="head-arrow" data-arrow="supply" d="M378 127 L394 138 L378 149 Z"/>
         <path class="head-arrow" data-arrow="exhaust" d="M22 127 L6 138 L22 149 Z"/>
@@ -769,16 +781,26 @@ class VentsA21Card extends HTMLElement {
     const bypass = number(bypassState);
     const rotary = bypassState?.attributes.exchanger === "rotary";
     const bypassedStream = bypassState?.attributes.bypassed_air === "extract" ? "stale" : "fresh";
-    const around = on && !rotary && bypass !== null && bypass >= 50;
-    for (const [name, paths] of Object.entries(STREAMS)) {
+    // Share of the bypassed stream drawn around the exchanger: the position
+    // of the damper. The rest keeps crossing the exchanger.
+    const share = on && !rotary && bypass !== null ? Math.min(Math.max(bypass, 0), 100) / 100 : 0;
+    for (const name of Object.keys(STREAMS)) {
       const group = root.querySelector(`[data-stream="${name}"]`);
-      const detour = around && name === bypassedStream;
-      const d = detour ? paths.around : paths.through;
-      group.querySelector(".stream").setAttribute("d", d);
-      group.querySelector(".motion").setAttribute("d", d);
-      group.querySelector(".gap").setAttribute("d", detour ? paths.gap : "");
+      const aroundShare = name === bypassedStream ? share : 0;
+      const widths = { around: aroundShare, through: 1 - aroundShare };
+      for (const piece of ["around", "through"]) {
+        const shown = widths[piece] >= 0.05;
+        for (const kind of ["stream", "motion"]) {
+          const node = group.querySelector(`.${kind}[data-piece="${piece}"]`);
+          node.toggleAttribute("hidden", !shown); // SVG elements have no .hidden
+          node.style.strokeWidth = `${((kind === "stream" ? STREAM_WIDTH : MOTION_WIDTH) * widths[piece]).toFixed(2)}px`;
+        }
+      }
+      const gap = group.querySelector(".gap");
+      gap.toggleAttribute("hidden", widths.around < 0.05);
+      gap.style.strokeWidth = `${(STREAM_WIDTH * widths.around + GAP_EXTRA).toFixed(2)}px`;
       // The detour is drawn last, over the stream it crosses.
-      if (detour) this._el.streams.append(group);
+      if (aroundShare > 0) this._el.streams.append(group);
     }
 
     const efficiencyState = state("efficiency");
