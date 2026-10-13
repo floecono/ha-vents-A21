@@ -219,7 +219,7 @@ async def test_bypass_and_rotor(
     await entry.runtime_data.async_refresh()
     exchanger = rows((await client.receive_json())["event"], "exchanger")
     assert exchanger["Échangeur rotatif"] == "Ralenti à 60 %"
-    assert exchanger["Signal de commande"] == "40 %"
+    assert exchanger["Commande envoyée"] == "40 %"
     assert "Air dévié" not in exchanger
 
 

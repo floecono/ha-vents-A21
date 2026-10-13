@@ -70,6 +70,8 @@ const TEXT = {
     bypass: "Bypass",
     bypassOpen: "ouvert",
     bypassClosed: "fermé",
+    bypassOpening: (p) => `s'ouvre (${p} %)`,
+    bypassClosing: (p) => `se ferme (${p} %)`,
     rotor: "Rotor",
     rotorFact: "Échangeur rotatif",
     rotorStopped: "à l'arrêt",
@@ -144,6 +146,8 @@ const TEXT = {
     bypass: "Bypass",
     bypassOpen: "open",
     bypassClosed: "closed",
+    bypassOpening: (p) => `opening (${p} %)`,
+    bypassClosing: (p) => `closing (${p} %)`,
     rotor: "Rotor",
     rotorFact: "Rotary exchanger",
     rotorStopped: "stopped",
@@ -601,6 +605,7 @@ class VentsA21Card extends HTMLElement {
             a.temperature_difference,
             a.options,
             a.frost_protection,
+            a.command,
           ]
         );
       }),
@@ -895,7 +900,13 @@ class VentsA21Card extends HTMLElement {
       const wheel = bypass <= 0 ? text.rotorFull : bypass >= 100 ? text.rotorStopped : `${100 - bypass} %`;
       fact("bypass", text.rotorFact, wheel);
     } else if (bypass !== null) {
-      const damper = bypass <= 0 ? text.bypassClosed : bypass >= 100 ? text.bypassOpen : `${bypass} %`;
+      // While a three-point actuator travels, the command runs ahead of the
+      // position the controller reports: say so instead of "open".
+      const command = Number(bypassState?.attributes.command);
+      let damper = bypass <= 0 ? text.bypassClosed : bypass >= 100 ? text.bypassOpen : `${bypass} %`;
+      if (Number.isFinite(command) && command !== bypass) {
+        damper = command > bypass ? text.bypassOpening(bypass) : text.bypassClosing(bypass);
+      }
       fact("bypass", text.bypass, damper);
     }
     if (days !== null) fact("filterDays", text.filters, text.days(days), filterDue || filterSoon ? "due" : "");

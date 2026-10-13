@@ -234,7 +234,8 @@ _T: dict[str, dict[str, str]] = {
         "x_side": "Air dévié",
         "x_side_0": "Air neuf",
         "x_side_1": "Air extrait",
-        "x_signal": "Signal de commande",
+        "x_signal": "Commande envoyée",
+        "x_signal_moving": "Le registre est en mouvement vers cette valeur.",
         "x_efficiency": "Rendement de récupération",
         "x_efficiency_unmeasured": "Non mesurable",
         "x_efficiency_small_difference": (
@@ -397,7 +398,8 @@ _T: dict[str, dict[str, str]] = {
         "x_side": "Bypassed air",
         "x_side_0": "Outdoor air",
         "x_side_1": "Extract air",
-        "x_signal": "Control signal",
+        "x_signal": "Command sent",
+        "x_signal_moving": "The damper is travelling towards this value.",
         "x_efficiency": "Heat recovery efficiency",
         "x_efficiency_unmeasured": "Cannot be measured",
         "x_efficiency_small_difference": (
@@ -802,8 +804,18 @@ def _exchanger(b: _Builder) -> None:
         if kind not in ROTARY_TYPES:
             rows.append(b.row("x_side", b.choice("x_side", data.hr(HR_BYPASS_SIDE))))
         signal = data.ir(IR_BYPASS_OUTPUT)
-        if kind in (2, 4) and signal is not None:
-            rows.append(b.row("x_signal", b.value(min(signal, 100), "%")))
+        if signal is not None:
+            # The position above is where the controller believes the damper
+            # is; the command is where it is sending it. They differ while a
+            # three-point actuator travels (48 s or so for a full stroke).
+            moving = position is not None and min(signal, 100) != position
+            rows.append(
+                b.row(
+                    "x_signal",
+                    b.value(min(signal, 100), "%"),
+                    hint=text["x_signal_moving"] if moving else None,
+                )
+            )
 
     efficiency = data.efficiency
     status = data.efficiency_status
