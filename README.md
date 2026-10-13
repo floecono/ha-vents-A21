@@ -289,7 +289,7 @@ C'est la méthode des gestions techniques de bâtiment : on ne sécurise pas le 
 - **Sortie Internet de la machine** : bloquez-la si vous n'utilisez pas le pilotage à distance de l'application mobile.
 - **Passerelle RS485 vers Ethernet** : si la machine est raccordée par une passerelle Modbus, celle-ci n'authentifie pas davantage ses clients. Placez-la dans le même réseau technique et changez son mot de passe d'administration.
 
-## État de la version 0.2.6
+## État de la version 0.2.7
 
 L'intégration est écrite d'après la table Modbus officielle de l'automate A21 (VENTS, document V55-8-1EN-02) et la notice de l'application DF Connect pour la signification des codes d'alarme. Elle est vérifiée contre un simulateur de la machine, par une suite de tests automatiques et par un essai dans une instance Home Assistant. Elle n'a pas encore été validée sur une machine réelle : vos retours sont les bienvenus, [ouvrez un ticket](https://github.com/floecono/ha-vents-A21/issues) en joignant les diagnostics.
 
