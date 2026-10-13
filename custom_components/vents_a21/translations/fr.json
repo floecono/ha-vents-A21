@@ -109,7 +109,32 @@
               "5": "Vitesse 5",
               "manual": "Manuelle"
             }
+          },
+          "hvac_action": {
+            "state": {
+              "off": "Éteint",
+              "fan": "Ventilation",
+              "heating": "Chauffage",
+              "cooling": "Refroidissement",
+              "idle": "En attente"
+            }
+          },
+          "hvac_modes": {
+            "state": {
+              "off": "Éteint",
+              "fan_only": "Ventilation",
+              "heat": "Chauffage",
+              "cool": "Refroidissement",
+              "auto": "Automatique"
+            }
           }
+        },
+        "state": {
+          "off": "Éteint",
+          "fan_only": "Ventilation",
+          "heat": "Chauffage",
+          "cool": "Refroidissement",
+          "auto": "Automatique"
         }
       }
     },
