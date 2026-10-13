@@ -84,6 +84,7 @@ const TEXT = {
     speed: (n) => `Vitesse ${n}`,
     manual: "Manuelle",
     manualAt: (p) => `Vitesse manuelle ${p} %`,
+    manualSlider: "Vitesse manuelle",
     boost: "boost en cours",
     timer: "minuterie en cours",
     schedule: "programmation hebdomadaire",
@@ -155,6 +156,7 @@ const TEXT = {
     speed: (n) => `Speed ${n}`,
     manual: "Manual",
     manualAt: (p) => `Manual speed ${p} %`,
+    manualSlider: "Manual speed",
     boost: "boost running",
     timer: "timer running",
     schedule: "weekly schedule",
@@ -247,6 +249,10 @@ const STYLE = `
   .speeds button[data-mode="manual"] { flex: 0 0 auto; padding: 0 12px; }
   .speeds button:disabled { opacity: .45; cursor: default; }
 
+  .manual { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: .875rem; color: var(--secondary-text-color); }
+  .manual input { flex: 1 1 0; min-width: 0; accent-color: var(--a21-green); cursor: pointer; }
+  .manual output { flex: none; min-width: 4ch; text-align: right; font-weight: 500; color: var(--primary-text-color);
+                   font-variant-numeric: tabular-nums; }
   .bypassctl { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
   .bypassctl > span { flex: 1 1 0; min-width: 0; font-size: .875rem; color: var(--secondary-text-color); }
   .bypassctl button { flex: 0 0 auto; height: 34px; padding: 0 14px; border-radius: 10px; font-size: .875rem;
@@ -358,6 +364,7 @@ const TEMPLATE = `
       </svg>
 
       <div class="speeds" role="group"></div>
+      <div class="manual" hidden><span></span><input type="range"><output></output></div>
       <div class="bypassctl" role="group" hidden><span></span></div>
       <div class="facts"></div>
     </div>
@@ -500,6 +507,7 @@ class VentsA21Card extends HTMLElement {
       effLabel: root.querySelector(".effLabel"),
       speeds: root.querySelector(".speeds"),
       bypassControl: root.querySelector(".bypassctl"),
+      manual: root.querySelector(".manual"),
       facts: root.querySelector(".facts"),
       brand: root.querySelector(".brand a"),
     };
@@ -509,6 +517,11 @@ class VentsA21Card extends HTMLElement {
       const button = event.target.closest("button[data-mode]");
       if (button) this._setSpeed(button.dataset.mode);
     });
+    const slider = this._el.manual.querySelector("input");
+    slider.addEventListener("input", () => {
+      this._el.manual.querySelector("output").textContent = `${slider.value} %`;
+    });
+    slider.addEventListener("change", () => this._setManualSpeed(Number(slider.value)));
     this._el.bypassControl.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-option]");
       if (button) this._setBypass(button.dataset.option);
@@ -794,6 +807,24 @@ class VentsA21Card extends HTMLElement {
       }),
     );
 
+    // --- manual speed: a slider while the manual speed is selected ----------
+    const manualState = state("manualSpeed");
+    const showManual = on && fanMode === "manual" && number(manualState) !== null;
+    this._el.manual.hidden = !showManual;
+    if (showManual) {
+      const slider = this._el.manual.querySelector("input");
+      const a = manualState.attributes;
+      this._el.manual.querySelector("span").textContent = text.manualSlider;
+      slider.min = a.min ?? 0;
+      slider.max = a.max ?? 100;
+      slider.step = a.step ?? 1;
+      slider.setAttribute("aria-label", text.manualSlider);
+      // Leave the thumb alone while the finger is on it.
+      if (!slider.matches(":active")) slider.value = number(manualState);
+      this._el.manual.querySelector("output").textContent = `${slider.value} %`;
+      slider.disabled = unavailable;
+    }
+
     // --- bypass control (opt-in) --------------------------------------------
     const bypassMode = state("bypassMode");
     const showBypass = Boolean(this._config.bypass_control) && Boolean(bypassMode) && !rotary;
@@ -875,6 +906,12 @@ class VentsA21Card extends HTMLElement {
     this._hass.callService("climate", "set_fan_mode", { entity_id: entityId, fan_mode: mode });
   }
 
+  _setManualSpeed(value) {
+    const entityId = this._ids?.manualSpeed;
+    if (!entityId) return;
+    this._hass.callService("number", "set_value", { entity_id: entityId, value });
+  }
+
   _setBypass(option) {
     const entityId = this._ids?.bypassMode;
     if (!entityId) return;
@@ -897,6 +934,12 @@ class VentsA21Card extends HTMLElement {
 const DETAILS_STYLE = `
   :host { --a21-green: #52ae32; display: block; }
   ha-card { display: block; padding: 16px 16px 10px; overflow: hidden; }
+  /* In the card picker, each preview is centred in a row as tall as the
+     tallest card: a full-length details card would push the other preview
+     out of sight. Keep the preview short there. */
+  :host([in-picker]) ha-card { max-height: 360px; position: relative; }
+  :host([in-picker]) ha-card::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 90px;
+    background: linear-gradient(to bottom, transparent, var(--card-background-color, #fff)); pointer-events: none; }
   a:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; border-radius: 4px; }
 
   .head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
@@ -984,6 +1027,16 @@ function element(tag, className, text) {
  * only listed when the unit has the matching hardware. This card just lays
  * it out, and follows the unit through a WebSocket subscription.
  */
+/** True when the element sits inside the dashboard's "add card" picker. */
+function inCardPicker(element) {
+  let node = element;
+  for (let depth = 0; node && depth < 40; depth += 1) {
+    if (node.tagName === "HUI-CARD-PICKER") return true;
+    node = node.parentElement || (node.getRootNode && node.getRootNode().host) || null;
+  }
+  return false;
+}
+
 class VentsA21DetailsCard extends HTMLElement {
   static getStubConfig(hass) {
     return { device_id: devicesOf(hass)[0] || "" };
@@ -1004,6 +1057,7 @@ class VentsA21DetailsCard extends HTMLElement {
   }
 
   connectedCallback() {
+    this.toggleAttribute("in-picker", inCardPicker(this));
     this._subscribe();
   }
 
