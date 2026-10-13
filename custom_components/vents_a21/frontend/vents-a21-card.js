@@ -314,21 +314,22 @@ function roundedPath(points, radius = STREAM_RADIUS) {
   return parts.join(" ");
 }
 
-// The branches start and end on the trunks, one corner radius before the
-// junction, so that their rounded corner leaves the trunk smoothly; the
-// trunks are drawn over that overlap.
+// The exchanger branch starts and ends on the trunks, one corner radius
+// before the junction, so that its rounded corner leaves the trunk
+// smoothly; the trunks are drawn over that overlap. The detour starts at
+// the very end of the trunk and leaves it straight, out of its round cap.
 const R = STREAM_RADIUS;
 const STREAMS = {
   fresh: {
     in: "M12 62 H148",
     through: roundedPath([[148 - R, 62], [148, 62], [250, 138], [250 + R, 138]]),
-    around: roundedPath([[148 - R, 62], [148, 62], [134, 100], [200, 164], [250, 138], [250 + R, 138]]),
+    around: roundedPath([[148, 62], [134, 100], [200, 164], [250, 138], [250 + R, 138]]),
     out: "M250 138 H380",
   },
   stale: {
     in: "M388 62 H252",
     through: roundedPath([[252 + R, 62], [252, 62], [150, 138], [150 - R, 138]]),
-    around: roundedPath([[252 + R, 62], [252, 62], [266, 100], [200, 164], [150, 138], [150 - R, 138]]),
+    around: roundedPath([[252, 62], [266, 100], [200, 164], [150, 138], [150 - R, 138]]),
     out: "M150 138 H20",
   },
 };
