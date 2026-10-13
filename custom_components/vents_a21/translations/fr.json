@@ -70,7 +70,7 @@
         },
         "data_description": {
           "scan_interval": "Temps entre deux lectures de la machine (15 s par défaut).",
-          "manual_bypass": "Cochez si vous pilotez le bypass vous-même (tuile, automatisations). L'avertissement « Bypass en mode manuel » de la machine n'est alors plus signalé, ni dans les tuiles ni dans les capteurs d'alarme."
+          "manual_bypass": "Cochez si vous pilotez le bypass vous-même (tuile, automatisations). L'avertissement « Bypass en mode manuel » de la machine n'est alors plus signalé, ni dans les tuiles ni dans les capteurs d'alarme. Attention : sans préchauffage, c'est le bypass qui protège l'échangeur du gel ; en hiver, repassez en automatique."
         }
       }
     }

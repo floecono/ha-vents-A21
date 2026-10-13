@@ -179,6 +179,27 @@ async def test_bypass_and_rotor(
     assert bypass.attributes["exchanger"] == "bypass"
     assert bypass.attributes["bypassed_air"] == "extract"
 
+    # Frost protection by the bypass: a hand-driven bypass gets a reminder.
+    simulator.set_holding(56, 2)
+    await entry.runtime_data.async_refresh()
+    exchanger = section((await client.receive_json())["event"], "exchanger")
+    control = next(r for r in exchanger["rows"] if r["label"] == "Commande")
+    assert control["value"] == "Forcé ouvert"
+    assert "repassez en automatique" in control["hint"]
+    assert (
+        hass.states.get("sensor.zephyr_240_s_connect_bypass_opening").attributes[
+            "frost_protection"
+        ]
+        == "bypass"
+    )
+    simulator.set_holding(74, 2)  # back to automatic: no reminder
+    await entry.runtime_data.async_refresh()
+    exchanger = section((await client.receive_json())["event"], "exchanger")
+    control = next(r for r in exchanger["rows"] if r["label"] == "Commande")
+    assert control["value"] == "Automatique"
+    assert "hint" not in control
+    simulator.set_holding(74, 1)
+
     # Heat is still recovered when indoor and outdoor air are close, only
     # the figure is missing: the row says so instead of vanishing.
     simulator.set_input(51, 0)
