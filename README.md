@@ -163,7 +163,7 @@ filter_link: true
 
 #### Commande manuelle du bypass
 
-Par défaut, la tuile se contente d'afficher l'état du bypass (fermé, ouvert, ou la position intermédiaire). Pour les utilisateurs avertis qui veulent le piloter eux-mêmes (voir [Piloter le bypass soi-même](#piloter-le-bypass-soi-même)), elle peut afficher en plus une rangée **Bypass : Auto / Ouvert / Fermé**. Désactivée par défaut, elle s'active dans l'éditeur de la tuile ou en YAML. Quand elle est active, la tuile ne signale plus l'avertissement « Bypass en mode manuel » que la machine émet tant qu'on lui a retiré la main : c'est voulu.
+Par défaut, la tuile se contente d'afficher l'état du bypass (fermé, ouvert, ou la position intermédiaire). Le dessin suit cette position : à 40 %, une part fine du flux contourne l'échangeur et le reste le traverse. Ce pourcentage est la position du volet, estimée par la machine à partir de son temps de course, pas une mesure de débit : la répartition réelle de l'air entre les deux chemins dépend des pertes de charge de chacun. Pour les utilisateurs avertis qui veulent le piloter eux-mêmes (voir [Piloter le bypass soi-même](#piloter-le-bypass-soi-même)), elle peut afficher en plus une rangée **Bypass : Auto / Ouvert / Fermé**. Désactivée par défaut, elle s'active dans l'éditeur de la tuile ou en YAML. Quand elle est active, la tuile ne signale plus l'avertissement « Bypass en mode manuel » que la machine émet tant qu'on lui a retiré la main : c'est voulu.
 
 ```yaml
 type: custom:vents-a21-card
