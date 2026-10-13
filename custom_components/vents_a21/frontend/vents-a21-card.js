@@ -293,21 +293,46 @@ const STYLE = `
 // branches share the junctions, so their widths can follow the position of
 // the bypass damper: a damper at 40 % draws a thin stream around the
 // exchanger and a thicker one through it.
+const STREAM_RADIUS = 14; // of the rounded corners, in viewBox units
+
+/** Path of a polyline whose corners are rounded with quadratic curves. */
+function roundedPath(points, radius = STREAM_RADIUS) {
+  const parts = [`M${points[0][0]} ${points[0][1]}`];
+  for (let i = 1; i < points.length - 1; i++) {
+    const [px, py] = points[i - 1];
+    const [x, y] = points[i];
+    const [nx, ny] = points[i + 1];
+    const before = Math.hypot(x - px, y - py);
+    const after = Math.hypot(nx - x, ny - y);
+    const r = Math.min(radius, before / 2, after / 2);
+    const a = [x + ((px - x) / before) * r, y + ((py - y) / before) * r];
+    const b = [x + ((nx - x) / after) * r, y + ((ny - y) / after) * r];
+    parts.push(`L${a[0].toFixed(1)} ${a[1].toFixed(1)}`, `Q${x} ${y} ${b[0].toFixed(1)} ${b[1].toFixed(1)}`);
+  }
+  const [lx, ly] = points[points.length - 1];
+  parts.push(`L${lx} ${ly}`);
+  return parts.join(" ");
+}
+
+// The branches start and end on the trunks, one corner radius before the
+// junction, so that their rounded corner leaves the trunk smoothly; the
+// trunks are drawn over that overlap.
+const R = STREAM_RADIUS;
 const STREAMS = {
   fresh: {
     in: "M12 62 H148",
-    through: "M148 62 L250 138",
-    around: "M148 62 L134 100 L200 164 L250 138",
+    through: roundedPath([[148 - R, 62], [148, 62], [250, 138], [250 + R, 138]]),
+    around: roundedPath([[148 - R, 62], [148, 62], [134, 100], [200, 164], [250, 138], [250 + R, 138]]),
     out: "M250 138 H380",
   },
   stale: {
     in: "M388 62 H252",
-    through: "M252 62 L150 138",
-    around: "M252 62 L266 100 L200 164 L150 138",
+    through: roundedPath([[252 + R, 62], [252, 62], [150, 138], [150 - R, 138]]),
+    around: roundedPath([[252 + R, 62], [252, 62], [266, 100], [200, 164], [150, 138], [150 - R, 138]]),
     out: "M150 138 H20",
   },
 };
-const STREAM_PIECES = ["in", "through", "around", "out"];
+const STREAM_PIECES = ["through", "around", "in", "out"];
 const STREAM_WIDTH = 9; // of a full stream, matching .unit .stream
 const MOTION_WIDTH = 2.5;
 const GAP_EXTRA = 7; // the mask under the detour is this much wider
