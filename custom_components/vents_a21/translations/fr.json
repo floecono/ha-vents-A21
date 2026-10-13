@@ -114,7 +114,7 @@
             "state": {
               "off": "Éteint",
               "fan": "Ventilation",
-              "heating": "Chauffage",
+              "heating": "Appoint chauffage",
               "cooling": "Refroidissement",
               "idle": "En attente"
             }
@@ -123,8 +123,8 @@
             "state": {
               "off": "Éteint",
               "fan_only": "Ventilation",
-              "heat": "Chauffage",
-              "cool": "Refroidissement",
+              "heat": "Chaud",
+              "cool": "Froid",
               "auto": "Automatique"
             }
           }
@@ -132,8 +132,8 @@
         "state": {
           "off": "Éteint",
           "fan_only": "Ventilation",
-          "heat": "Chauffage",
-          "cool": "Refroidissement",
+          "heat": "Chaud",
+          "cool": "Froid",
           "auto": "Automatique"
         }
       }
