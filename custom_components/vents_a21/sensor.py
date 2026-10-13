@@ -50,6 +50,7 @@ from .const import (
     HR_VENTILATION_MODE,
     IR_10V_SENSOR,
     IR_ALARM,
+    IR_BYPASS_OUTPUT,
     IR_BYPASS_STATE,
     IR_CO2_EXT,
     IR_CO2_INT,
@@ -222,6 +223,7 @@ def _bypass_attributes(data: A21Data, language: str) -> dict[str, Any]:
     """
     rotary = data.hr(HR_BYPASS_TYPE) in ROTARY_TYPES
     frost = data.hr(HR_DEFROST_MODE)
+    signal = data.ir(IR_BYPASS_OUTPUT)
     return {
         "exchanger": "rotary" if rotary else "bypass",
         "bypassed_air": "extract" if data.hr(HR_BYPASS_SIDE) == 1 else "outdoor",
@@ -232,6 +234,9 @@ def _bypass_attributes(data: A21Data, language: str) -> dict[str, Any]:
             if frost is not None and frost < len(FROST_PROTECTION)
             else None
         ),
+        # Where the controller is sending the damper (0-100). Differs from the
+        # state while a three-point actuator travels.
+        "command": None if signal is None else min(signal, 100),
     }
 
 
