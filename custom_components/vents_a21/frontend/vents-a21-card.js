@@ -791,6 +791,7 @@ class VentsA21Card extends HTMLElement {
       maximumFractionDigits: 1,
     });
     const root = this.shadowRoot;
+    const colours = {};
     for (const [key, value] of Object.entries(temps)) {
       root.querySelector(`[data-temp="${key}"]`).textContent =
         value === null ? "–" : `${formatter.format(value)}°`;
@@ -798,9 +799,14 @@ class VentsA21Card extends HTMLElement {
       // warmest of the four streams.
       const colour =
         !on || value === null ? IDLE : mix(span < 0.5 ? 0.5 : (value - low) / span);
+      colours[key] = colour;
       root.querySelector(`[data-stop="${key}"]`).setAttribute("stop-color", colour);
       root.querySelector(`[data-arrow="${key}"]`)?.setAttribute("fill", colour);
     }
+    // No exchange along the detour: it keeps the colour of the air that
+    // enters it, up to the point where it joins the trunk again.
+    root.querySelector('[data-stream="fresh"] .stream[data-piece="around"]').setAttribute("stroke", colours.outdoor);
+    root.querySelector('[data-stream="stale"] .stream[data-piece="around"]').setAttribute("stroke", colours.extract);
     for (const node of root.querySelectorAll("[data-text]")) node.textContent = text[node.dataset.text];
 
     const fan = Math.max(number(state("supplyFan")) ?? 60, number(state("extractFan")) ?? 60);
