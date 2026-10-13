@@ -347,7 +347,7 @@ function streamMarkup(name) {
     <path class="gap" d="${paths.around}"/>
     ${STREAM_PIECES.map(
       (piece) =>
-        `<path class="stream" data-piece="${piece}" d="${paths[piece]}" stroke="url(#g-${name})"/>`,
+        `<path class="stream" data-piece="${piece}" d="${paths[piece]}" stroke="url(#g-${name}${piece === "through" ? "-x" : ""})"/>`,
     ).join("")}
     ${STREAM_PIECES.map((piece) => `<path class="motion" data-piece="${piece}" d="${paths[piece]}"/>`).join("")}
   </g>`;
@@ -380,6 +380,15 @@ const TEMPLATE = `
           </linearGradient>
           <linearGradient id="g-stale" gradientUnits="userSpaceOnUse" x1="388" x2="12" y1="0" y2="0">
             <stop offset=".42" data-stop="extract"/><stop offset=".58" data-stop="exhaust"/>
+          </linearGradient>
+          <!-- The branch through the exchanger ends at the temperature the
+               exchanger delivers, which differs from the measured outlet
+               when part of the air went around it and was mixed back in. -->
+          <linearGradient id="g-fresh-x" gradientUnits="userSpaceOnUse" x1="12" x2="388" y1="0" y2="0">
+            <stop offset=".42" data-xstop="fresh-in"/><stop offset=".58" data-xstop="fresh-out"/>
+          </linearGradient>
+          <linearGradient id="g-stale-x" gradientUnits="userSpaceOnUse" x1="388" x2="12" y1="0" y2="0">
+            <stop offset=".42" data-xstop="stale-in"/><stop offset=".58" data-xstop="stale-out"/>
           </linearGradient>
         </defs>
 
@@ -840,6 +849,19 @@ class VentsA21Card extends HTMLElement {
       gap.style.strokeWidth = `${(STREAM_WIDTH * widths.around + GAP_EXTRA).toFixed(2)}px`;
       // The detour is drawn last, over the stream it crosses.
       if (aroundShare > 0) this._el.streams.append(group);
+
+      // Colour at the exit of the exchanger: the measured outlet is the mix
+      // of what went through and what went around, so what went through
+      // was further from the inlet than the outlet shows.
+      const [inlet, outlet] = name === "fresh" ? ["outdoor", "supply"] : ["extract", "exhaust"];
+      let exchanged = colours[outlet];
+      if (aroundShare > 0 && aroundShare < 0.95 && temps[inlet] !== null && temps[outlet] !== null) {
+        const value = (temps[outlet] - aroundShare * temps[inlet]) / (1 - aroundShare);
+        const clamped = Math.min(Math.max(value, low), low + span);
+        exchanged = mix(span < 0.5 ? 0.5 : (clamped - low) / span);
+      }
+      root.querySelector(`[data-xstop="${name}-in"]`).setAttribute("stop-color", colours[inlet]);
+      root.querySelector(`[data-xstop="${name}-out"]`).setAttribute("stop-color", exchanged);
     }
 
     const efficiencyState = state("efficiency");
