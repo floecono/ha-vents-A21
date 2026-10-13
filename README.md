@@ -150,6 +150,7 @@ Le protocole Modbus TCP ne prévoit ni mot de passe ni chiffrement : tout appare
 - **Pilotez à distance en passant par Home Assistant** (son accès distant ou un VPN), jamais en ouvrant un accès direct à la machine.
 - **Protégez Home Assistant** : c'est lui qui porte les comptes et les mots de passe. Activez la double authentification.
 - **Invités** : faites-les passer par le Wi-Fi invité de votre box, qui est isolé du réseau où se trouve la machine.
+- **Pour aller plus loin, un réseau à part pour les appareils sans authentification** : si votre routeur le permet, regroupez dans un VLAN dédié la machine et vos autres équipements qui se pilotent sans mot de passe (Modbus, objets connectés), et n'autorisez que Home Assistant à les joindre. Un ordinateur ou un téléphone du réseau principal ne peut alors plus les atteindre directement. La marche à suivre est détaillée ci-dessous.
 
 ### Installations professionnelles ou réseau partagé
 
