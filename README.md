@@ -139,6 +139,7 @@ automation:
 - **Intervalle de lecture** : 15 secondes par défaut, réglable dans les options de l'intégration.
 - **Échangeur** : les machines ECONOPRIME ont un échangeur à plaques avec bypass. L'automate A21 sait aussi piloter un échangeur rotatif, qu'on trouve chez d'autres marques : l'intégration le reconnaît et adapte ses libellés, mais ce cas ne concerne pas la gamme.
 - **Programmation hebdomadaire** : elle s'active et se désactive depuis Home Assistant. Ses créneaux se règlent pour l'instant dans l'application mobile.
+- **Automatisations Home Assistant** : vous pouvez aussi vous passer de la programmation de la machine et tout piloter par des automatisations, par exemple changer de vitesse selon l'heure, la présence, l'humidité ou le CO₂, lancer la minuterie pendant la douche ou être prévenu quand les filtres sont à remplacer. Dans ce cas, désactivez la programmation hebdomadaire de la machine, pour que les deux ne se contredisent pas.
 - **Horloge** : le bouton « Mettre l'horloge à l'heure » est désactivé par défaut tant qu'il n'a pas été validé sur machine.
 - **Assistance** : dans la page de l'intégration, menu à trois points, **Télécharger les diagnostics**. Le fichier contient les registres bruts de la machine, sans son adresse IP : joignez-le à votre demande.
 
