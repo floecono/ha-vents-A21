@@ -142,6 +142,16 @@ automation:
 - **Horloge** : le bouton « Mettre l'horloge à l'heure » est désactivé par défaut tant qu'il n'a pas été validé sur machine.
 - **Assistance** : dans la page de l'intégration, menu à trois points, **Télécharger les diagnostics**. Le fichier contient les registres bruts de la machine, sans son adresse IP : joignez-le à votre demande.
 
+## Sécurité du réseau
+
+Le protocole Modbus TCP ne prévoit ni mot de passe ni chiffrement : tout appareil présent sur le même réseau que la machine peut la lire et la piloter. Ce n'est pas propre à cette intégration, c'est le fonctionnement du protocole. La protection se fait donc par le réseau et par Home Assistant.
+
+- **Ne redirigez jamais le port 502 vers Internet** sur votre box ou votre routeur.
+- **Pilotez à distance en passant par Home Assistant** (son accès distant ou un VPN), jamais en ouvrant un accès direct à la machine.
+- **Protégez Home Assistant** : c'est lui qui porte les comptes et les mots de passe. Activez la double authentification.
+- **Invités** : faites-les passer par le Wi-Fi invité de votre box, qui est isolé du réseau où se trouve la machine.
+- **Installations professionnelles ou réseau partagé** : placez la machine dans un VLAN dédié, et n'autorisez dans le pare-feu que Home Assistant vers la machine, en TCP sur le port 502.
+
 ## État de la version 0.2.0
 
 L'intégration est écrite d'après la table Modbus officielle de l'automate A21 (VENTS, document V55-8-1EN-02) et la notice de l'application DF Connect pour la signification des codes d'alarme. Elle est vérifiée contre un simulateur de la machine, par une suite de tests automatiques et par un essai dans une instance Home Assistant. Elle n'a pas encore été validée sur une machine réelle : vos retours sont les bienvenus, [ouvrez un ticket](https://github.com/floecono/ha-vents-A21/issues) en joignant les diagnostics.
