@@ -314,24 +314,25 @@ function roundedPath(points, radius = STREAM_RADIUS) {
   return parts.join(" ");
 }
 
-// The exchanger branch continues the trunk straight into the middle of a
-// slanted face of the exchanger and crosses it under the core, which is
-// slightly translucent so the two streams can be seen meeting in its
-// centre; the detour leaves the end of the trunk downwards and follows the
-// outline of the core at a constant 14 units (its flat side, then its lower
-// face, then up to the trunk). Both branches share the width of the stream.
+// The exchanger branch dips from the trunk into the middle of an upper
+// slanted face of the exchanger, runs along the block against the other
+// stream (the core is slightly translucent, so this shows through) and
+// leaves by the middle of the opposite lower face; the detour leaves the
+// end of the trunk and follows the outline of the core at a constant
+// 14 units (its tip, then its lower faces, then up to the trunk). Both
+// branches share the width of the stream.
 const R = STREAM_RADIUS;
 const STREAMS = {
   fresh: {
     in: "M12 62 H148",
-    through: roundedPath([[148, 62], [182, 62], [218, 138], [250, 138]]),
-    around: roundedPath([[148, 62], [150, 133], [200, 167], [250, 138], [250 + R, 138]]),
+    through: roundedPath([[148, 62], [159, 78], [182, 96], [218, 96], [241, 122], [250, 138]]),
+    around: roundedPath([[148, 62], [127, 100], [167, 158], [233, 158], [250, 138], [250 + R, 138]]),
     out: "M250 138 H380",
   },
   stale: {
     in: "M388 62 H252",
-    through: roundedPath([[252, 62], [218, 62], [182, 138], [150, 138]]),
-    around: roundedPath([[252, 62], [250, 133], [200, 167], [150, 138], [150 - R, 138]]),
+    through: roundedPath([[252, 62], [241, 78], [218, 104], [182, 104], [159, 122], [150, 138]]),
+    around: roundedPath([[252, 62], [273, 100], [233, 158], [167, 158], [150, 138], [150 - R, 138]]),
     out: "M150 138 H20",
   },
 };
@@ -383,7 +384,7 @@ const TEMPLATE = `
         </defs>
 
         <text class="setpoint" x="200" y="15"></text>
-        <rect class="casing" x="128" y="24" width="144" height="152" rx="16"/>
+        <rect class="casing" x="112" y="24" width="176" height="152" rx="16"/>
         <text class="side" x="12" y="104" data-text="outside"></text>
         <text class="side" x="388" y="104" text-anchor="end" data-text="inside"></text>
 
@@ -394,9 +395,11 @@ const TEMPLATE = `
         <path class="head-arrow" data-arrow="supply" d="M378 127 L394 138 L378 149 Z"/>
         <path class="head-arrow" data-arrow="exhaust" d="M22 127 L6 138 L22 149 Z"/>
 
-        <!-- A counter-flow plate exchanger: a hexagonal block, the two
-             streams entering and leaving through its slanted faces. -->
-        <path class="core" d="M200 50 L236 74 L236 126 L200 150 L164 126 L164 74 Z"/>
+        <!-- A counter-flow plate exchanger: a hexagonal block lying on its
+             side. Each stream enters through an upper slanted face, runs
+             along the block against the other stream, and leaves through
+             the opposite lower face. -->
+        <path class="core" d="M144 100 L174 56 L226 56 L256 100 L226 144 L174 144 Z"/>
         <text class="eff" x="200" y="104"></text>
         <text class="effLabel" x="200" y="118"></text>
 
