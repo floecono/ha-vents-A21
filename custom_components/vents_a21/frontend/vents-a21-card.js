@@ -1189,14 +1189,26 @@ Promise.race([
 ]).then(register);
 
 {
-  const text = TEXT[(navigator.language || "").startsWith("fr") ? "fr" : "en"];
+  // The card picker is filled before any hass object exists: use the language
+  // chosen in the Home Assistant profile (kept by the frontend in local
+  // storage), then the browser's. The other language's name is appended to
+  // the description so a search in either language finds the cards.
+  let chosen = "";
+  try {
+    chosen = JSON.parse(localStorage.getItem("selectedLanguage") || '""') || "";
+  } catch {
+    chosen = "";
+  }
+  const lang = String(chosen || navigator.language || "").startsWith("fr") ? "fr" : "en";
+  const text = TEXT[lang];
+  const other = TEXT[lang === "fr" ? "en" : "fr"];
   window.customCards = window.customCards || [];
   for (const [tag, , name, description] of CARDS) {
     if (window.customCards.some((card) => card.type === tag)) continue;
     window.customCards.push({
       type: tag,
       name: text[name],
-      description: text[description],
+      description: `${text[description]} (${other[name]})`,
       preview: true,
       documentationURL: "https://github.com/floecono/ha-vents-A21",
     });

@@ -265,7 +265,7 @@ automation:
 - **Échangeur** : les machines ECONOPRIME ont un échangeur à plaques avec bypass. L'automate A21 sait aussi piloter un échangeur rotatif, qu'on trouve chez d'autres marques : l'intégration le reconnaît et adapte ses libellés, mais ce cas ne concerne pas la gamme.
 - **Programmation hebdomadaire** : elle s'active et se désactive depuis Home Assistant. Ses créneaux se règlent pour l'instant dans l'application mobile.
 - **Automatisations Home Assistant** : vous pouvez aussi vous passer de la programmation de la machine et tout piloter par des automatisations, par exemple changer de vitesse selon l'heure, la présence, l'humidité ou le CO₂, lancer la minuterie pendant la douche ou être prévenu quand les filtres sont à remplacer. Dans ce cas, désactivez la programmation hebdomadaire de la machine, pour que les deux ne se contredisent pas.
-- **Horloge** : le bouton « Mettre l'horloge à l'heure » est désactivé par défaut tant qu'il n'a pas été validé sur machine.
+- **Horloge** : le bouton « Mettre l'horloge à l'heure » envoie l'heure de Home Assistant à la machine (validé sur machine). Si la pile de l'horloge est faible, une automatisation qui l'appuie chaque nuit dépanne en attendant de la changer.
 - **Assistance** : dans la page de l'intégration, menu à trois points, **Télécharger les diagnostics**. Le fichier contient les registres bruts de la machine, sans son adresse IP : joignez-le à votre demande.
 
 ## Sécurité du réseau
@@ -289,7 +289,7 @@ C'est la méthode des gestions techniques de bâtiment : on ne sécurise pas le 
 - **Sortie Internet de la machine** : bloquez-la si vous n'utilisez pas le pilotage à distance de l'application mobile.
 - **Passerelle RS485 vers Ethernet** : si la machine est raccordée par une passerelle Modbus, celle-ci n'authentifie pas davantage ses clients. Placez-la dans le même réseau technique et changez son mot de passe d'administration.
 
-## État de la version 0.2.5
+## État de la version 0.2.6
 
 L'intégration est écrite d'après la table Modbus officielle de l'automate A21 (VENTS, document V55-8-1EN-02) et la notice de l'application DF Connect pour la signification des codes d'alarme. Elle est vérifiée contre un simulateur de la machine, par une suite de tests automatiques et par un essai dans une instance Home Assistant. Elle n'a pas encore été validée sur une machine réelle : vos retours sont les bienvenus, [ouvrez un ticket](https://github.com/floecono/ha-vents-A21/issues) en joignant les diagnostics.
 
