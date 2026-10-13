@@ -29,7 +29,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
 from .alarms import ALARM, WARNING
-from .api import A21Data
+from .api import MIN_EFFICIENCY_DELTA, A21Data
 from .const import (
     CL_10V_SENSOR_CTRL,
     CL_EXT_CO2_CTRL,
@@ -223,6 +223,20 @@ def _bypass_attributes(data: A21Data, language: str) -> dict[str, Any]:
     }
 
 
+def _efficiency_attributes(data: A21Data, language: str) -> dict[str, Any]:
+    """Say why the efficiency is or is not given.
+
+    status: "measured", or the reason there is no figure ("small_difference",
+    "heating", "cooling", "preheating", "bypass", "off", "no_probe").
+    The exchanger still recovers heat in the first four of those.
+    """
+    return {
+        "status": data.efficiency_status,
+        "temperature_difference": data.temperature_difference,
+        "minimum_difference": MIN_EFFICIENCY_DELTA,
+    }
+
+
 def _has_tacho(data: A21Data) -> bool:
     # HR_FAN_ALARM_CTRL 1..254: number of tacho pulses per rotation.
     return 0 < (data.hr(HR_FAN_ALARM_CTRL) or 0) < 255
@@ -346,6 +360,7 @@ SENSORS: tuple[A21SensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda data: data.efficiency,
+        attributes_fn=_efficiency_attributes,
         exists_fn=lambda data: all(
             data.temperature(address) is not None
             for address in (IR_TEMP_OUTDOOR, IR_TEMP_SUPPLY, IR_TEMP_EXTRACT)
