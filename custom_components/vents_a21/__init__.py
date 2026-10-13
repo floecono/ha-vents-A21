@@ -13,6 +13,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.loader import async_get_integration
 
+from . import websocket
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 from .coordinator import A21ConfigEntry, A21Coordinator
 
@@ -44,6 +45,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     )
     # The version in the URL makes browsers fetch the card again after an update.
     add_extra_js_url(hass, f"{CARD_URL}?v={integration.version}")
+    websocket.async_register(hass)
     return True
 
 
@@ -60,6 +62,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: A21ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: A21ConfigEntry) -> bool:
     """Unload one ventilation unit."""
+    entry.runtime_data.async_notify_unload()
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 

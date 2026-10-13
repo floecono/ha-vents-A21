@@ -57,6 +57,10 @@ DI_STATUS_VOC: Final = 6
 DI_STATUS_HEATER: Final = 7
 DI_STATUS_COOLER: Final = 8
 DI_STATUS_FAN_BLOWING: Final = 9
+DI_SUPPLY_FILTER_SWITCH: Final = 12
+DI_EXTRACT_FILTER_SWITCH: Final = 13
+DI_SUPPLY_FAN_SWITCH: Final = 16
+DI_EXTRACT_FAN_SWITCH: Final = 17
 DI_ALARM_FIRST: Final = 19
 ALARM_CODE_COUNT: Final = 53
 DISCRETE_COUNT: Final = 72
@@ -95,13 +99,20 @@ IR_WORK_HOURS_MIN: Final = 29  # high byte: hours, low byte: minutes
 IR_WORK_DAYS: Final = 30
 IR_FILTER_STATE: Final = 31
 IR_WEEK_SPEED: Final = 32
+IR_WEEK_TEMP: Final = 33
 IR_FIRMWARE: Final = 34  # 34: major/minor, 35: day/month, 36: year
 IR_DEVICE_TYPE: Final = 37
 IR_ALARM: Final = 38
+IR_RH_DEMAND: Final = 39
+IR_CO2_DEMAND: Final = 40
+IR_PM25_DEMAND: Final = 41
+IR_VOC_DEMAND: Final = 42
 IR_PREHEATER_OUTPUT: Final = 43
 IR_REHEATER_OUTPUT: Final = 44
 IR_BYPASS_OUTPUT: Final = 45
 IR_COOLER_OUTPUT: Final = 46
+IR_WATER_OUTPUT: Final = 47
+IR_SUPPLY_SETPOINT: Final = 48
 IR_BYPASS_STATE: Final = 51
 IR_SUPPLY_FAN_PERCENT: Final = 52
 IR_EXTRACT_FAN_PERCENT: Final = 53
@@ -132,12 +143,17 @@ HR_TEMP_SENSOR: Final = 53
 HR_MAIN_HEATER_TYPE: Final = 54
 HR_COOLER_TYPE: Final = 55
 HR_DEFROST_MODE: Final = 56
-HR_BYPASS_TYPE: Final = 57
+HR_BYPASS_TYPE: Final = 57  # 0: none, 1: on/off, 2: analogue, 3/4: rotary, 5: 3-point
+# The ECONOPRIME units all have a plate exchanger with a bypass damper. The
+# A21 controller can also drive a rotary exchanger, found on other brands:
+# that case is handled (wording, drawing) but is the exception.
+ROTARY_TYPES: Final = frozenset({3, 4})
 HR_FILTER_TIMER: Final = 58
 HR_BOOST_OFF_DELAY: Final = 59
 HR_BOOST_ON_DELAY: Final = 60
 HR_BYPASS_MODE: Final = 74  # 0: closed, 1: open, 2: auto
-HR_FAN_ALARM_CTRL: Final = 103
+HR_FAN_ALARM_CTRL: Final = 103  # 0: none, 1..254: tacho pulses, 255: pressure switch
+HR_BYPASS_SIDE: Final = 110  # 0: bypasses the outdoor air, 1: the extract air
 # 124-125 hold the engineering menu password: never read, never written.
 HOLDING_COUNT: Final = 124
 
@@ -163,6 +179,13 @@ class Model:
 def _shop(path: str) -> str:
     return f"{SHOP_URL}{path}{_UTM}"
 
+
+# Optional probes, suggested when the unit does not have them.
+ACCESSORIES: Final[dict[str, str]] = {
+    "humidity": _shop("hv2-econoprime-sonde-hygro.html"),
+    "co2": _shop("econoprime-sonde-co2-0-10v.html"),
+    "voc": _shop("econoprime-sonde-cov-0-10v.html"),
+}
 
 MODEL_GENERIC: Final = "generic"
 

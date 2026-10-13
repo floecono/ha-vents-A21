@@ -28,6 +28,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
+from .alarms import ALARM, WARNING
 from .api import A21Data
 from .const import (
     CL_10V_SENSOR_CTRL,
@@ -39,8 +40,7 @@ from .const import (
     CL_INT_PM25_CTRL,
     CL_INT_RH_CTRL,
     CL_INT_VOC_CTRL,
-    DI_STATUS_COOLER,
-    DI_STATUS_HEATER,
+    HR_BYPASS_SIDE,
     HR_BYPASS_TYPE,
     HR_COOLER_TYPE,
     HR_DEFROST_MODE,
@@ -79,21 +79,15 @@ from .const import (
     IR_TEMP_PANEL,
     IR_TEMP_SUPPLY,
     IR_TEMP_WATER,
-    IR_TIMER_HOURS,
-    IR_TIMER_MIN_SEC,
     IR_VOC_EXT,
     IR_VOC_INT,
-    IR_WORK_DAYS,
-    IR_WORK_HOURS_MIN,
+    ROTARY_TYPES,
 )
 from .coordinator import A21ConfigEntry, A21Coordinator
 from .entity import A21Entity
 
 FILTER_STATES = ["clean", "supply_clogged", "extract_clogged", "replace"]
 ALARM_STATES = ["ok", "alarm", "warning"]
-
-# Below this indoor/outdoor difference the efficiency figure is only noise.
-_MIN_EFFICIENCY_DELTA = 5.0
 
 
 def _always(_: A21Data) -> bool:
@@ -112,7 +106,8 @@ class A21SensorDescription(SensorEntityDescription):
     value_fn: Callable[[A21Data], StateType]
     exists_fn: Callable[[A21Data], bool] = _always
     enabled_fn: Callable[[A21Data], bool] = _always
-    attributes_fn: Callable[[A21Data], dict[str, Any]] | None = None
+    # Receives the data and the language of the Home Assistant instance.
+    attributes_fn: Callable[[A21Data, str], dict[str, Any]] | None = None
 
 
 def _temperature(key: str, address: int) -> A21SensorDescription:
@@ -184,42 +179,6 @@ def _output(
     )
 
 
-def _efficiency(data: A21Data) -> int | None:
-    """Return the supply-side heat recovery efficiency in percent.
-
-    (supply - outdoor) / (extract - outdoor). Only meaningful while the
-    exchanger alone changes the supply temperature, so nothing is reported
-    when a heater or cooler runs or when the bypass is open.
-    """
-    outdoor = data.temperature(IR_TEMP_OUTDOOR)
-    supply = data.temperature(IR_TEMP_SUPPLY)
-    extract = data.temperature(IR_TEMP_EXTRACT)
-    if outdoor is None or supply is None or extract is None or not data.is_on:
-        return None
-    if data.di(DI_STATUS_HEATER) or data.di(DI_STATUS_COOLER):
-        return None
-    if data.ir(IR_BYPASS_STATE) or data.ir(IR_PREHEATER_OUTPUT):
-        return None
-    delta = extract - outdoor
-    if abs(delta) < _MIN_EFFICIENCY_DELTA:
-        return None
-    return round(min(max((supply - outdoor) / delta, 0.0), 1.0) * 100)
-
-
-def _timer_remaining(data: A21Data) -> int | None:
-    min_sec, hours = data.ir(IR_TIMER_MIN_SEC), data.ir(IR_TIMER_HOURS)
-    if min_sec is None or hours is None:
-        return None
-    return (hours & 0xFF) * 3600 + (min_sec >> 8) * 60 + (min_sec & 0xFF)
-
-
-def _operating_hours(data: A21Data) -> int | None:
-    hours_min, days = data.ir(IR_WORK_HOURS_MIN), data.ir(IR_WORK_DAYS)
-    if hours_min is None or days is None:
-        return None
-    return days * 24 + (hours_min >> 8)
-
-
 def _filter_days(data: A21Data) -> int | None:
     # A setpoint of 0 means the replacement timer is switched off.
     if not data.hr(HR_FILTER_TIMER):
@@ -233,6 +192,35 @@ def _enum(options: list[str], address: int) -> Callable[[A21Data], str | None]:
         return options[raw] if raw is not None and raw < len(options) else None
 
     return value
+
+
+def _alarm_attributes(data: A21Data, language: str) -> dict[str, Any]:
+    """List the active codes with their meaning.
+
+    "alarms" stop the unit until they are reset; "warnings" clear by
+    themselves. "active" carries the same information in a structured form.
+    """
+    active = data.active_codes(language)
+    return {
+        "codes": [item.code for item in active],
+        "alarms": [item.label for item in active if item.severity == ALARM],
+        "warnings": [item.label for item in active if item.severity == WARNING],
+        "active": [item.as_dict() for item in active],
+    }
+
+
+def _bypass_attributes(data: A21Data, language: str) -> dict[str, Any]:
+    """Say what the position applies to.
+
+    exchanger: "rotary" when the position is the slow-down of a rotary
+    exchanger (100 = stopped) instead of a bypass damper (100 = open).
+    bypassed_air: which air stream goes around the exchanger.
+    """
+    rotary = data.hr(HR_BYPASS_TYPE) in ROTARY_TYPES
+    return {
+        "exchanger": "rotary" if rotary else "bypass",
+        "bypassed_air": "extract" if data.hr(HR_BYPASS_SIDE) == 1 else "outdoor",
+    }
 
 
 def _has_tacho(data: A21Data) -> bool:
@@ -351,12 +339,13 @@ SENSORS: tuple[A21SensorDescription, ...] = (
         exists_fn=lambda data: (
             data.ir(IR_BYPASS_STATE) is not None and bool(data.hr(HR_BYPASS_TYPE))
         ),
+        attributes_fn=_bypass_attributes,
     ),
     A21SensorDescription(
         key="heat_recovery_efficiency",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=_efficiency,
+        value_fn=lambda data: data.efficiency,
         exists_fn=lambda data: all(
             data.temperature(address) is not None
             for address in (IR_TEMP_OUTDOOR, IR_TEMP_SUPPLY, IR_TEMP_EXTRACT)
@@ -387,7 +376,7 @@ SENSORS: tuple[A21SensorDescription, ...] = (
         key="active_alarms",
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda data: len(data.alarm_codes),
-        attributes_fn=lambda data: {"codes": data.alarm_codes},
+        attributes_fn=_alarm_attributes,
     ),
     A21SensorDescription(
         key="timer_remaining",
@@ -395,8 +384,8 @@ SENSORS: tuple[A21SensorDescription, ...] = (
         native_unit_of_measurement=UnitOfTime.SECONDS,
         suggested_unit_of_measurement=UnitOfTime.MINUTES,
         suggested_display_precision=0,
-        value_fn=_timer_remaining,
-        exists_fn=lambda data: _timer_remaining(data) is not None,
+        value_fn=lambda data: data.timer_remaining,
+        exists_fn=lambda data: data.timer_remaining is not None,
     ),
     A21SensorDescription(
         key="operating_time",
@@ -404,8 +393,8 @@ SENSORS: tuple[A21SensorDescription, ...] = (
         native_unit_of_measurement=UnitOfTime.HOURS,
         state_class=SensorStateClass.TOTAL_INCREASING,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_operating_hours,
-        exists_fn=lambda data: _operating_hours(data) is not None,
+        value_fn=lambda data: data.operating_hours,
+        exists_fn=lambda data: data.operating_hours is not None,
     ),
     A21SensorDescription(
         key="rtc_battery",
@@ -471,4 +460,6 @@ class A21Sensor(A21Entity, SensorEntity):
         """Return the extra attributes, if any."""
         if self.entity_description.attributes_fn is None:
             return None
-        return self.entity_description.attributes_fn(self.coordinator.data)
+        return self.entity_description.attributes_fn(
+            self.coordinator.data, self.hass.config.language
+        )

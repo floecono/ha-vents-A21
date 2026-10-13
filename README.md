@@ -13,7 +13,7 @@ La liaison se fait en **Modbus TCP sur votre réseau local** (Wi-Fi ou Ethernet)
 Une intégration proposée par [Econology](https://www.econology.fr/?utm_source=github&utm_medium=readme&utm_campaign=vents_a21), spécialiste français de la ventilation.
 
 <p align="center">
-  <img src="docs/tuile.png" alt="La tuile de tableau de bord : les quatre flux d'air colorés selon leur température, le rendement au centre, les vitesses en dessous" width="500">
+  <img src="docs/tuile.png" alt="La tuile de tableau de bord : les quatre flux d'air colorés selon leur température, le rendement au centre, les vitesses en dessous" width="440">
 </p>
 
 ## Machines compatibles
@@ -38,13 +38,16 @@ Les autres machines à automate A21 (VENTS, Blauberg) utilisent la même table M
 
 ## Ce que vous obtenez
 
-- **Une tuile prête à poser** sur votre tableau de bord, sans rien configurer : la machine vue de face, les quatre flux d'air colorés selon leur température réelle, le rendement de l'échangeur, les boutons de vitesse et la marche/arrêt.
+- **Une tuile prête à poser** sur votre tableau de bord, sans rien configurer : les quatre flux d'air colorés selon leur température réelle, le rendement de l'échangeur, la position du bypass (le flux dévié contourne l'échangeur sur le dessin), les boutons de vitesse et la marche/arrêt.
+- **Une tuile « toutes les mesures »** pour ceux qui veulent tout voir : puissance, régime, débit et pression de chaque ventilateur, toutes les sondes, l'état de l'échangeur et des batteries, les entrées, l'entretien.
+- **Les alarmes en clair** : les 46 codes de la machine sont traduits (« Défaut du ventilateur de soufflage », « Sonde de CO₂ non détectée »…), en distinguant les alarmes, qui arrêtent la machine, des simples avertissements.
 - **Un rappel avant l'échéance des filtres**, avec le lien vers les bons filtres pour votre modèle.
-- **Toutes les mesures dans l'historique** : air neuf, air soufflé, air extrait, air rejeté, humidité, CO₂, PM2.5 et COV si les sondes sont montées, régime et puissance des ventilateurs, ouverture du bypass, heures de fonctionnement.
-- **Les commandes pour vos automatisations** : marche/arrêt, mode (ventilation, chauffage, rafraîchissement, automatique), vitesses 1 à 5 et vitesse manuelle, consigne de température, minuterie, programmation hebdomadaire, bypass forcé ouvert ou fermé pour le rafraîchissement nocturne.
-- **Les alarmes** de la machine, avec leurs codes, et le bouton pour les acquitter.
+- **Les réglages de l'application mobile** dans la page de l'appareil : puissance des ventilateurs de soufflage et d'extraction pour chaque vitesse, veille, boost et ses temporisations, seuils d'humidité et de qualité d'air, intervalle des filtres, minuterie, bascule hiver/été.
+- **Toutes les mesures dans l'historique** et **toutes les commandes pour vos automatisations** : marche/arrêt, mode, vitesses 1 à 5 et vitesse manuelle, consigne, minuterie, programmation hebdomadaire, bypass forcé ouvert ou fermé pour le rafraîchissement nocturne.
 
-Seules les sondes et options réellement présentes sur votre machine sont activées. Les autres restent disponibles, désactivées, dans la page de l'appareil.
+### Seules vos options apparaissent
+
+Les sondes d'humidité, de CO₂, de PM2.5 et de COV, l'entrée 0-10 V, les batteries de chauffage ou de refroidissement sont des options : toutes les machines ne les ont pas. L'intégration regarde ce qui est réellement monté et n'affiche que cela. Le reste existe, désactivé, dans la page de l'appareil : si vous ajoutez une sonde plus tard, activez son entité.
 
 ## Installation
 
@@ -70,28 +73,78 @@ Sans HACS : copiez le dossier `custom_components/vents_a21` dans le dossier `cus
 
 Ou : **Paramètres**, **Appareils et services**, **Ajouter une intégration**, cherchez « ECONOPRIME ». Saisissez l'adresse IP et choisissez votre modèle. Le port (502) et l'adresse Modbus (1) sont dans les paramètres avancés, à ne modifier que si vous les avez changés sur la machine.
 
-### 4. Poser la tuile
+### 4. Poser les tuiles
 
-Sur votre tableau de bord : crayon en haut à droite, **Ajouter une carte**, cherchez « VMC ». La tuile trouve la machine toute seule. Rien à déclarer dans les ressources : elle est livrée avec l'intégration.
+Sur votre tableau de bord : crayon en haut à droite, **Ajouter une carte**, cherchez « VMC ». Deux tuiles sont proposées, et chacune trouve la machine toute seule. Rien à déclarer dans les ressources : elles sont livrées avec l'intégration.
+
+| La machine d'un coup d'œil | Toutes les mesures |
+|---|---|
+| <img src="docs/tuile.png" alt="Tuile principale" width="360"> | <img src="docs/tuile-details.png" alt="Tuile détaillée : fonctionnement, ventilateurs, températures, qualité d'air, échangeur, entrées, entretien" width="360"> |
 
 En YAML :
 
 ```yaml
-type: custom:vents-a21-card
+type: custom:vents-a21-card          # la machine d'un coup d'œil
+```
+
+```yaml
+type: custom:vents-a21-details-card  # toutes les mesures
 ```
 
 Avec plusieurs machines, précisez `device_id` (l'éditeur de la carte propose la liste) et, si vous voulez, `name` pour le titre.
+
+## Réglages
+
+Dans **Paramètres**, **Appareils et services**, ouvrez la machine : le bloc **Configuration** reprend les réglages de l'application mobile.
+
+- **Vitesses** : pourcentage du ventilateur de soufflage et d'extraction pour la veille et pour chaque vitesse. Sur une machine réglée en débit constant ou en pression constante, ce sont des m³/h ou des pascals qui sont proposés à la place.
+- **Boost** : vitesses de soufflage et d'extraction, temporisations de démarrage et d'arrêt.
+- **Minuterie** : vitesse, durée, température.
+- **Qualité d'air** : seuils d'humidité, de CO₂, de PM2.5 et de COV, selon les sondes montées.
+- **Filtres** : intervalle de remplacement, remise à zéro du compteur.
+- **Divers** : sonde servant à la régulation, température de bascule hiver/été, mode du bypass.
+
+Les réglages du **menu ingénieur** existent aussi, désactivés par défaut : activation des sondes et des entrées, type de batterie, protection antigel, corrections des sondes de température, temporisations, coefficients des régulateurs. Activez seulement ceux dont vous avez besoin, ils agissent directement sur la machine.
+
+Deux choses ne sont volontairement pas proposées : la remise aux réglages d'usine et le mot de passe du menu ingénieur.
+
+## Alarmes et avertissements
+
+Le capteur **Alarmes actives** donne le nombre de codes actifs, et ses attributs leur signification :
+
+- `alarms` : les alarmes. La machine s'arrête et attend que vous appuyiez sur **Acquitter les alarmes** une fois la cause traitée.
+- `warnings` : les avertissements. La machine continue de tourner, et l'avertissement disparaît seul quand sa cause disparaît.
+
+Exemple de notification :
+
+```yaml
+automation:
+  - alias: "VMC : prévenir en cas d'alarme"
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.zephyr_240_s_connect_alarme
+        to: "on"
+    actions:
+      - action: notify.notify
+        data:
+          title: "VMC"
+          message: >
+            {{ (state_attr('sensor.zephyr_240_s_connect_alarmes_actives', 'alarms')
+                + state_attr('sensor.zephyr_240_s_connect_alarmes_actives', 'warnings')) | join(', ') }}
+```
 
 ## Bon à savoir
 
 - **Rendement de récupération** : calculé côté air neuf, (air soufflé − air neuf) ÷ (air extrait − air neuf). Il n'est affiché que lorsqu'il a un sens : machine en marche, bypass fermé, pas de batterie de chauffage en action, et au moins 5 °C d'écart entre intérieur et extérieur.
 - **Intervalle de lecture** : 15 secondes par défaut, réglable dans les options de l'intégration.
-- **Réglages installateur** : la remise aux réglages d'usine, le mot de passe du menu ingénieur et les coefficients de régulation ne sont volontairement pas exposés.
+- **Échangeur** : les machines ECONOPRIME ont un échangeur à plaques avec bypass. L'automate A21 sait aussi piloter un échangeur rotatif, qu'on trouve chez d'autres marques : l'intégration le reconnaît et adapte ses libellés, mais ce cas ne concerne pas la gamme.
+- **Programmation hebdomadaire** : elle s'active et se désactive depuis Home Assistant. Ses créneaux se règlent pour l'instant dans l'application mobile.
+- **Horloge** : le bouton « Mettre l'horloge à l'heure » est désactivé par défaut tant qu'il n'a pas été validé sur machine.
 - **Assistance** : dans la page de l'intégration, menu à trois points, **Télécharger les diagnostics**. Le fichier contient les registres bruts de la machine, sans son adresse IP : joignez-le à votre demande.
 
-## État de la version 0.1.0
+## État de la version 0.2.0
 
-L'intégration est écrite d'après la table Modbus officielle de l'automate A21 (VENTS, document V55-8-1EN-02). Elle est vérifiée contre un simulateur de la machine, par une suite de tests automatiques et par un essai dans une instance Home Assistant. Elle n'a pas encore été validée sur une machine réelle : vos retours sont les bienvenus, [ouvrez un ticket](https://github.com/floecono/ha-vents-A21/issues) en joignant les diagnostics.
+L'intégration est écrite d'après la table Modbus officielle de l'automate A21 (VENTS, document V55-8-1EN-02) et la notice de l'application DF Connect pour la signification des codes d'alarme. Elle est vérifiée contre un simulateur de la machine, par une suite de tests automatiques et par un essai dans une instance Home Assistant. Elle n'a pas encore été validée sur une machine réelle : vos retours sont les bienvenus, [ouvrez un ticket](https://github.com/floecono/ha-vents-A21/issues) en joignant les diagnostics.
 
 ## Besoin de filtres, d'une sonde, d'un conseil ?
 

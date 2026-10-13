@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -54,6 +56,26 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         self.model: Model = MODELS.get(
             entry.data.get(CONF_MODEL, MODEL_GENERIC), MODELS[MODEL_GENERIC]
         )
+        # Callbacks of the dashboard cards following this unit, told when the
+        # unit is unloaded so they can subscribe again.
+        self.detail_watchers: set[Callable[[], None]] = set()
+
+    @property
+    def device_name(self) -> str:
+        """Return the name the user gave the device, else its default name."""
+        device = dr.async_get(self.hass).async_get_device(
+            {(DOMAIN, self.config_entry.entry_id)}
+        )
+        if device is None:
+            return self.config_entry.title
+        return device.name_by_user or device.name or self.config_entry.title
+
+    @callback
+    def async_notify_unload(self) -> None:
+        """Tell the cards following this unit that it is going away."""
+        for watcher in list(self.detail_watchers):
+            watcher()
+        self.detail_watchers.clear()
 
     @property
     def device_info(self) -> DeviceInfo:

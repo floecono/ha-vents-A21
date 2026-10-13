@@ -1,6 +1,8 @@
 /*
- * vents-a21-card — dashboard card for heat recovery ventilation units with
- * the A21 controller (ECONOPRIME Connect range, VENTS A21).
+ * Dashboard cards for heat recovery ventilation units with the A21 controller
+ * (ECONOPRIME Connect range, VENTS A21):
+ *   - vents-a21-card: the unit at a glance, for everyday use;
+ *   - vents-a21-details-card: every value the controller reports.
  *
  * Shipped with the vents_a21 integration, which loads it in every dashboard:
  * there is no resource to declare. Plain JavaScript, no build step.
@@ -11,6 +13,7 @@
 
 const DOMAIN = "vents_a21";
 const CARD = "vents-a21-card";
+const DETAILS_CARD = "vents-a21-details-card";
 const UTM = "?utm_source=home-assistant&utm_medium=card&utm_campaign=vents_a21";
 const SHOP = "https://www.econology.fr/";
 
@@ -24,6 +27,9 @@ const FILTERS = {
   "DF 270 Connect": "filtre-vmc-double-flux-df-270-econoprime.html",
   "DF 350 Connect": "filtre-vmc-double-flux-df-350-econoprime.html",
 };
+
+// Alarm codes that only say "change the filters": the filter notice covers them.
+const FILTER_CODES = new Set([24, 29, 40]);
 
 // Days before the filter deadline from which ordering is suggested.
 const FILTER_SOON_DAYS = 21;
@@ -39,6 +45,16 @@ const TEXT = {
     recovered: "récupérés",
     bypass: "Bypass",
     bypassOpen: "ouvert",
+    bypassClosed: "fermé",
+    rotor: "Rotor",
+    rotorFact: "Échangeur rotatif",
+    rotorStopped: "à l'arrêt",
+    rotorFull: "pleine vitesse",
+    code: (n) => `code ${n}`,
+    running: "En marche",
+    withAlarm: "alarme en cours",
+    withWarning: "avertissement en cours",
+    notInstalled: "Sondes non installées",
     off: "À l'arrêt",
     unavailable: "Machine injoignable",
     speed: (n) => `Vitesse ${n}`,
@@ -62,13 +78,14 @@ const TEXT = {
     orderFilters: "Commander les filtres",
     alarm: "Alarme",
     warning: "Avertissement",
-    codes: (c) => (c.length > 1 ? `codes ${c.join(", ")}` : `code ${c[0]}`),
     brand: "Filtres et accessoires sur econology.fr",
     noDevice: "Aucune machine trouvée. Ajoutez d'abord l'intégration dans Paramètres, Appareils et services.",
     pickDevice: "Machine",
     name: "Nom affiché (facultatif)",
     cardName: "VMC double flux ECONOPRIME / VENTS A21",
-    cardDescription: "Vue de la machine : températures des quatre flux d'air, rendement, vitesses, filtres.",
+    cardDescription: "Vue de la machine : températures des quatre flux d'air, rendement, bypass, vitesses, filtres.",
+    detailsName: "VMC double flux : toutes les mesures",
+    detailsDescription: "Vue technique : ventilateurs (puissance, régime, débit, pression), toutes les sondes, échangeur, batteries, entretien, alarmes en clair.",
   },
   en: {
     outdoor: "Outdoor air",
@@ -80,6 +97,16 @@ const TEXT = {
     recovered: "recovered",
     bypass: "Bypass",
     bypassOpen: "open",
+    bypassClosed: "closed",
+    rotor: "Rotor",
+    rotorFact: "Rotary exchanger",
+    rotorStopped: "stopped",
+    rotorFull: "full speed",
+    code: (n) => `code ${n}`,
+    running: "Running",
+    withAlarm: "alarm active",
+    withWarning: "warning active",
+    notInstalled: "Sensors not installed",
     off: "Off",
     unavailable: "Unit unreachable",
     speed: (n) => `Speed ${n}`,
@@ -103,13 +130,14 @@ const TEXT = {
     orderFilters: "Order filters",
     alarm: "Alarm",
     warning: "Warning",
-    codes: (c) => (c.length > 1 ? `codes ${c.join(", ")}` : `code ${c[0]}`),
     brand: "Filters and accessories on econology.fr",
     noDevice: "No unit found. Add the integration first in Settings, Devices & services.",
     pickDevice: "Unit",
     name: "Displayed name (optional)",
     cardName: "ECONOPRIME / VENTS A21 ventilation unit",
-    cardDescription: "View of the unit: temperature of the four air streams, efficiency, speeds, filters.",
+    cardDescription: "View of the unit: temperature of the four air streams, efficiency, bypass, speeds, filters.",
+    detailsName: "Ventilation unit: every measurement",
+    detailsDescription: "Technical view: fans (power, speed, airflow, pressure), every probe, exchanger, heaters, maintenance, alarms in plain words.",
   },
 };
 
@@ -134,14 +162,15 @@ const STYLE = `
   .power svg { width: 22px; height: 22px; }
   .power[aria-pressed="true"] { background: var(--a21-green); border-color: var(--a21-green); color: #fff; }
 
-  .notice { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 12px;
+  .notice { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 12px; margin-top: 12px;
             padding: 10px 12px; border-radius: 10px; font-size: .875rem; line-height: 1.35;
             color: var(--primary-text-color); background: color-mix(in srgb, var(--a21-tone) 14%, transparent); }
-  .notice::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--a21-tone); }
+  .notice::before { content: ""; flex: none; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--a21-tone); }
+  .notice small { font-size: .75rem; color: var(--secondary-text-color); white-space: nowrap; }
   .notice span { flex: 1; min-width: 12ch; }
   .notice a { color: var(--primary-text-color); font-weight: 500; text-underline-offset: 3px; }
   .notice.alarm { --a21-tone: var(--error-color, #db4437); }
-  .notice.filter { --a21-tone: var(--warning-color, #ffa600); }
+  .notice.warning, .notice.filter { --a21-tone: var(--warning-color, #ffa600); }
 
   .unit { display: block; width: 100%; height: auto; margin: 14px 0 6px; }
   .unit text { fill: var(--primary-text-color); font-family: inherit; }
@@ -154,6 +183,7 @@ const STYLE = `
   .unit .eff.word { font-size: 14px; }
   .unit .effLabel { font-size: 10px; text-anchor: middle; fill: var(--secondary-text-color); }
   .unit .stream { fill: none; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+  .unit .gap { fill: none; stroke: var(--secondary-background-color, #eee); stroke-width: 16; stroke-linejoin: round; }
   .unit .motion { fill: none; stroke: rgba(255,255,255,.75); stroke-width: 2.5; stroke-linecap: round;
                   stroke-dasharray: 1 17; animation: a21-flow var(--a21-period, 2s) linear infinite; }
   .unit .hit { fill: transparent; cursor: pointer; }
@@ -186,11 +216,21 @@ const STYLE = `
   [hidden] { display: none !important; }
 `;
 
-// Streams: [id, path, gradient from → to]. The two paths cross inside the
-// exchanger, where each one changes temperature.
+// The two air streams. "through" crosses the exchanger, where the stream
+// changes temperature; "around" is the same stream going past it when the
+// bypass is open, and "gap" the part of that detour drawn over the other
+// stream.
 const STREAMS = {
-  fresh: "M12 62 H150 L250 138 H380",
-  stale: "M388 62 H250 L150 138 H20",
+  fresh: {
+    through: "M12 62 H150 L250 138 H380",
+    around: "M12 62 H146 L134 100 L200 164 L250 138 H380",
+    gap: "M146 62 L134 100 L200 164 L250 138",
+  },
+  stale: {
+    through: "M388 62 H250 L150 138 H20",
+    around: "M388 62 H254 L266 100 L200 164 L150 138 H20",
+    gap: "M254 62 L266 100 L200 164 L150 138",
+  },
 };
 
 const TEMPLATE = `
@@ -209,6 +249,7 @@ const TEMPLATE = `
       </div>
 
       <div class="notice alarm" hidden><span></span></div>
+      <div class="notice warning" hidden><span></span></div>
       <div class="notice filter" hidden><span></span><a target="_blank" rel="noopener"></a></div>
 
       <svg class="unit" viewBox="0 0 400 200" role="img">
@@ -225,10 +266,18 @@ const TEMPLATE = `
         <text class="side" x="12" y="104" data-text="outside"></text>
         <text class="side" x="388" y="104" text-anchor="end" data-text="inside"></text>
 
-        <path class="stream" d="${STREAMS.stale}" stroke="url(#g-stale)"/>
-        <path class="stream" d="${STREAMS.fresh}" stroke="url(#g-fresh)"/>
-        <path class="motion" d="${STREAMS.stale}"/>
-        <path class="motion" d="${STREAMS.fresh}"/>
+        <g class="streams">
+          <g data-stream="stale">
+            <path class="gap"/>
+            <path class="stream" d="${STREAMS.stale.through}" stroke="url(#g-stale)"/>
+            <path class="motion" d="${STREAMS.stale.through}"/>
+          </g>
+          <g data-stream="fresh">
+            <path class="gap"/>
+            <path class="stream" d="${STREAMS.fresh.through}" stroke="url(#g-fresh)"/>
+            <path class="motion" d="${STREAMS.fresh.through}"/>
+          </g>
+        </g>
         <path class="head-arrow" data-arrow="supply" d="M378 127 L394 138 L378 149 Z"/>
         <path class="head-arrow" data-arrow="exhaust" d="M22 127 L6 138 L22 149 Z"/>
 
@@ -362,6 +411,8 @@ class VentsA21Card extends HTMLElement {
       status: root.querySelector(".status"),
       power: root.querySelector(".power"),
       alarm: root.querySelector(".notice.alarm"),
+      warning: root.querySelector(".notice.warning"),
+      streams: root.querySelector(".streams"),
       filter: root.querySelector(".notice.filter"),
       unit: root.querySelector(".unit"),
       eff: root.querySelector(".eff"),
@@ -428,7 +479,8 @@ class VentsA21Card extends HTMLElement {
       hass.devices?.[deviceId]?.name_by_user,
       Object.values(ids).map((id) => {
         const s = hass.states[id];
-        return s && [s.state, s.attributes.fan_mode, s.attributes.fan_modes, s.attributes.codes];
+        const a = s?.attributes;
+        return s && [s.state, a.fan_mode, a.fan_modes, a.codes, a.exchanger, a.bypassed_air];
       }),
     ]);
     if (signature === this._signature) return;
@@ -467,14 +519,33 @@ class VentsA21Card extends HTMLElement {
     this._el.power.disabled = unavailable;
 
     // --- notices ------------------------------------------------------------
+    // Alarms stop the unit until reset; warnings clear by themselves. The
+    // filter codes are left to the filter notice below.
     const alarmState = state("alarmState")?.state;
-    const hasAlarm = alarmState === "alarm" || alarmState === "warning";
-    this._el.alarm.hidden = !hasAlarm;
-    if (hasAlarm) {
-      const codes = state("alarms")?.attributes.codes || [];
-      const label = alarmState === "alarm" ? text.alarm : text.warning;
-      this._el.alarm.querySelector("span").textContent =
-        codes.length ? `${label}, ${text.codes(codes)}` : label;
+    let active = state("alarms")?.attributes.active;
+    if (!active) {
+      active = alarmState === "alarm" || alarmState === "warning" ? [{ type: alarmState }] : [];
+    }
+    active = active.filter((item) => !FILTER_CODES.has(item.code));
+    for (const [type, element, label] of [
+      ["alarm", this._el.alarm, text.alarm],
+      ["warning", this._el.warning, text.warning],
+    ]) {
+      const items = active.filter((item) => item.type === type);
+      element.hidden = items.length === 0;
+      element.querySelector("span").replaceChildren(
+        ...items.map((item) => {
+          const line = document.createElement("div");
+          line.textContent = item.text || label;
+          // A code the manual does not document is already shown as "Code 50".
+          if (item.code !== undefined && item.text !== `Code ${item.code}`) {
+            const code = document.createElement("small");
+            code.textContent = ` ${text.code(item.code)}`;
+            line.append(code);
+          }
+          return line;
+        }),
+      );
     }
 
     const days = number(state("filterDays"));
@@ -518,16 +589,39 @@ class VentsA21Card extends HTMLElement {
     // 30 % → one dash step every 1.5 s, 100 % → every 0.45 s.
     this._el.unit.style.setProperty("--a21-period", `${(45 / Math.max(fan, 30)).toFixed(2)}s`);
 
+    // Bypass: 0 closed, 100 open. With a rotary exchanger the same value is
+    // how much the wheel is slowed down, and no air goes around anything.
+    const bypassState = state("bypass");
+    const bypass = number(bypassState);
+    const rotary = bypassState?.attributes.exchanger === "rotary";
+    const bypassedStream = bypassState?.attributes.bypassed_air === "extract" ? "stale" : "fresh";
+    const around = on && !rotary && bypass !== null && bypass >= 50;
+    for (const [name, paths] of Object.entries(STREAMS)) {
+      const group = root.querySelector(`[data-stream="${name}"]`);
+      const detour = around && name === bypassedStream;
+      const d = detour ? paths.around : paths.through;
+      group.querySelector(".stream").setAttribute("d", d);
+      group.querySelector(".motion").setAttribute("d", d);
+      group.querySelector(".gap").setAttribute("d", detour ? paths.gap : "");
+      // The detour is drawn last, over the stream it crosses.
+      if (detour) this._el.streams.append(group);
+    }
+
     const efficiency = number(state("efficiency"));
-    const bypass = number(state("bypass"));
-    const bypassed = on && efficiency === null && bypass > 0;
-    this._el.eff.classList.toggle("word", bypassed);
+    const diverted = on && efficiency === null && bypass > 0;
+    this._el.eff.classList.toggle("word", diverted);
     if (on && efficiency !== null) {
       this._el.eff.textContent = `${Math.round(efficiency)} %`;
       this._el.effLabel.textContent = text.recovered;
+    } else if (diverted && rotary) {
+      this._el.eff.textContent = text.rotor;
+      this._el.effLabel.textContent = bypass >= 100 ? text.rotorStopped : `${100 - bypass} %`;
+    } else if (diverted) {
+      this._el.eff.textContent = text.bypass;
+      this._el.effLabel.textContent = bypass >= 100 ? text.bypassOpen : `${bypass} %`;
     } else {
-      this._el.eff.textContent = bypassed ? text.bypass : "";
-      this._el.effLabel.textContent = bypassed ? text.bypassOpen : "";
+      this._el.eff.textContent = "";
+      this._el.effLabel.textContent = "";
     }
     this._el.unit.setAttribute(
       "aria-label",
@@ -567,6 +661,13 @@ class VentsA21Card extends HTMLElement {
         text.fans,
         supplyFan === extractFan ? `${supplyFan} %` : `${supplyFan} / ${extractFan} %`,
       );
+    }
+    if (bypass !== null && rotary) {
+      const wheel = bypass <= 0 ? text.rotorFull : bypass >= 100 ? text.rotorStopped : `${100 - bypass} %`;
+      fact("bypass", text.rotorFact, wheel);
+    } else if (bypass !== null) {
+      const damper = bypass <= 0 ? text.bypassClosed : bypass >= 100 ? text.bypassOpen : `${bypass} %`;
+      fact("bypass", text.bypass, damper);
     }
     if (days !== null) fact("filterDays", text.filters, text.days(days), filterDue || filterSoon ? "due" : "");
     this._el.facts.replaceChildren(
@@ -609,14 +710,297 @@ class VentsA21Card extends HTMLElement {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Details card
+// ---------------------------------------------------------------------------
+
+const DETAILS_STYLE = `
+  :host { --a21-green: #52ae32; display: block; }
+  ha-card { padding: 16px 16px 10px; overflow: hidden; }
+  a:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; border-radius: 4px; }
+
+  .head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+  .name { flex: 1; min-width: 0; font-size: 1.25rem; font-weight: 500; line-height: 1.3; color: var(--primary-text-color);
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .status { flex: none; font-size: .875rem; color: var(--secondary-text-color); }
+  .status::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%;
+                    background: var(--a21-dot, var(--disabled-text-color, #9e9e9e)); }
+  .status.on { --a21-dot: var(--a21-green); }
+  .status.warning { --a21-dot: var(--warning-color, #ffa600); }
+  .status.alarm { --a21-dot: var(--error-color, #db4437); }
+
+  /* Sections flow in as many columns as the card is wide. */
+  .sections { columns: 250px; column-gap: 32px; }
+  section { break-inside: avoid; margin: 0 0 18px; }
+  h3 { margin: 0 0 6px; padding-bottom: 5px; font-size: .8125rem; font-weight: 500; letter-spacing: .01em;
+       color: var(--secondary-text-color); border-bottom: 1px solid var(--divider-color); }
+
+  .row, .cols { display: grid; gap: 2px 12px; align-items: baseline; padding: 3px 0; font-size: .875rem; line-height: 1.45; }
+  .row { grid-template-columns: minmax(34%, auto) minmax(0, 1fr); }
+  .cols { grid-template-columns: minmax(0, 1fr) repeat(2, minmax(64px, auto)); }
+  .label { color: var(--secondary-text-color); }
+  .label small { display: block; font-size: .75rem; opacity: .85; }
+  .value { color: var(--primary-text-color); font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
+  .cols.heading .value { font-weight: 400; font-size: .75rem; color: var(--secondary-text-color); }
+  .value.dot::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%;
+                       background: var(--a21-dot); vertical-align: 1px; }
+  .on { --a21-dot: var(--a21-green); }
+  .warning { --a21-dot: var(--warning-color, #ffa600); }
+  .alarm { --a21-dot: var(--error-color, #db4437); }
+
+  /* An alarm reads as a sentence, its code after it. */
+  .event { display: flex; gap: 9px; align-items: baseline; padding: 4px 0; font-size: .875rem; line-height: 1.4;
+           color: var(--primary-text-color); }
+  .event::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--a21-dot);
+                   transform: translateY(-1px); }
+  .event small { margin-left: 6px; font-size: .75rem; color: var(--secondary-text-color); white-space: nowrap; }
+
+  .absent { margin: 6px 0 0; font-size: .75rem; line-height: 1.5; color: var(--secondary-text-color); }
+  .absent a { color: inherit; text-underline-offset: 2px; }
+  .absent a:hover { color: var(--a21-green); }
+
+  .brand { display: flex; justify-content: flex-end; margin-top: 2px; }
+  .brand a { display: inline-flex; align-items: center; gap: 6px; font-size: .6875rem; letter-spacing: .04em;
+             text-decoration: none; color: var(--secondary-text-color); opacity: .6; transition: opacity .15s, color .15s; }
+  .brand svg { width: 11px; height: 12px; fill: currentColor; }
+  .brand a:hover, .brand a:focus-visible { opacity: 1; color: var(--a21-green); }
+
+  .empty { color: var(--secondary-text-color); font-size: .875rem; line-height: 1.5; margin-bottom: 8px; }
+  [hidden] { display: none !important; }
+`;
+
+const DETAILS_TEMPLATE = `
+  <ha-card>
+    <div class="head">
+      <div class="name"></div>
+      <div class="status"></div>
+    </div>
+    <div class="sections"></div>
+    <div class="empty" hidden></div>
+    <div class="brand">
+      <a target="_blank" rel="noopener" href="${SHOP}${UTM}">
+        <svg viewBox="0 0 51.54 57.64" aria-hidden="true">
+          <rect x=".84" y="44.97" width="49.79" height="11.67"/>
+          <polygon points="50.64 7.03 50.64 18.6 28.51 13.06 12.46 16.15 12.46 24.04 .84 24.04 .84 7.03 28.57 1.48 50.64 7.03"/>
+          <polygon points=".84 26.02 50.63 26.02 50.63 37.69 12.46 37.69 12.46 42.98 .84 42.98 .84 26.02"/>
+        </svg>
+        econology.fr
+      </a>
+    </div>
+  </ha-card>
+`;
+
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+/**
+ * Every value the controller reports, grouped by subject.
+ *
+ * The integration sends the content, already worded and filtered: a value is
+ * only listed when the unit has the matching hardware. This card just lays
+ * it out, and follows the unit through a WebSocket subscription.
+ */
+class VentsA21DetailsCard extends HTMLElement {
+  static getStubConfig(hass) {
+    return { device_id: devicesOf(hass)[0] || "" };
+  }
+
+  static getConfigForm() {
+    return VentsA21Card.getConfigForm();
+  }
+
+  setConfig(config) {
+    this._config = config || {};
+    this._subscribe();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._subscribe();
+  }
+
+  connectedCallback() {
+    this._subscribe();
+  }
+
+  disconnectedCallback() {
+    this._unsubscribe();
+  }
+
+  getCardSize() {
+    return 10;
+  }
+
+  getGridOptions() {
+    return { columns: 12, min_columns: 6, min_rows: 6 };
+  }
+
+  _text() {
+    return TEXT[(this._hass?.language || "en").startsWith("fr") ? "fr" : "en"];
+  }
+
+  _build() {
+    this.attachShadow({ mode: "open" });
+    this.shadowRoot.innerHTML = `<style>${DETAILS_STYLE}</style>${DETAILS_TEMPLATE}`;
+    const root = this.shadowRoot;
+    this._el = {
+      name: root.querySelector(".name"),
+      status: root.querySelector(".status"),
+      sections: root.querySelector(".sections"),
+      empty: root.querySelector(".empty"),
+      brand: root.querySelector(".brand a"),
+    };
+  }
+
+  /** Follow the configured unit; subscribe again when unit or language change. */
+  _subscribe() {
+    if (!this._hass || !this._config || !this.isConnected) return;
+    if (!this.shadowRoot) this._build();
+    this._el.brand.title = this._text().brand;
+
+    const deviceId = this._config.device_id || null;
+    const key = `${deviceId}|${this._hass.language}`;
+    if (this._subscription && key === this._key) return;
+    this._unsubscribe();
+    this._key = key;
+    const subscription = this._hass.connection.subscribeMessage(
+      (event) => {
+        if (this._subscription !== subscription) return;
+        if (event.reload) {
+          // The unit is being reloaded: wait for it to come back.
+          this._unsubscribe();
+          this._retry(3000);
+        } else {
+          this._render(event);
+        }
+      },
+      { type: `${DOMAIN}/subscribe_details`, device_id: deviceId, language: this._hass.language },
+    );
+    this._subscription = subscription;
+    subscription.catch(() => {
+      if (this._subscription !== subscription) return;
+      // No unit yet (integration not set up, or still starting).
+      this._subscription = null;
+      this._render(null);
+      this._retry(10000);
+    });
+  }
+
+  _retry(delay) {
+    clearTimeout(this._timer);
+    this._timer = setTimeout(() => this._subscribe(), delay);
+  }
+
+  _unsubscribe() {
+    clearTimeout(this._timer);
+    const subscription = this._subscription;
+    this._subscription = null;
+    if (subscription) subscription.then((stop) => stop()).catch(() => {});
+  }
+
+  _render(payload) {
+    const text = this._text();
+    const { name, status, sections, empty } = this._el;
+    if (!payload) {
+      name.textContent = this._config.name || "";
+      status.hidden = true;
+      sections.replaceChildren();
+      empty.hidden = false;
+      empty.textContent = text.noDevice;
+      return;
+    }
+    empty.hidden = true;
+    status.hidden = false;
+    name.textContent = this._config.name || payload.name;
+
+    let label = text.unavailable;
+    let level = "";
+    if (payload.available) {
+      label = payload.on ? text.running : text.off;
+      level = payload.level || (payload.on ? "on" : "");
+      if (payload.level === "alarm") label += `, ${text.withAlarm}`;
+      else if (payload.level === "warning") label += `, ${text.withWarning}`;
+    }
+    status.textContent = label;
+    status.className = `status ${level}`;
+
+    sections.replaceChildren(...payload.sections.map((section) => this._section(section)));
+  }
+
+  _section(section) {
+    const node = element("section");
+    node.append(element("h3", "", section.title));
+
+    if (section.key === "alarms") {
+      for (const row of section.rows) {
+        const line = element("div", `event ${row.level || ""}`, row.value);
+        // A code the manual does not document is already shown as "Code 50".
+        if (row.value !== `Code ${row.label}`) {
+          line.append(element("small", "", this._text().code(row.label)));
+        }
+        node.append(line);
+      }
+      return node;
+    }
+
+    if (section.columns) {
+      const heading = element("div", "cols heading");
+      heading.append(element("span"), ...section.columns.map((column) => element("span", "value", column)));
+      node.append(heading);
+    }
+    for (const row of section.rows) {
+      const line = element("div", section.columns ? "cols" : "row");
+      const label = element("span", "label", row.label);
+      if (row.hint) label.append(element("small", "", row.hint));
+      line.append(label);
+      if (row.values) {
+        line.append(...row.values.map((value) => element("span", "value", value)));
+      } else {
+        line.append(element("span", `value ${row.level ? `dot ${row.level}` : ""}`, row.value));
+      }
+      node.append(line);
+    }
+
+    if (section.absent?.length) {
+      const colon = this._hass.language.startsWith("fr") ? " : " : ": ";
+      const note = element("p", "absent", `${section.absent_label}${colon}`);
+      section.absent.forEach((item, index) => {
+        if (index) note.append(", ");
+        if (item.url) {
+          const link = element("a", "", item.label);
+          link.href = item.url;
+          link.target = "_blank";
+          link.rel = "noopener";
+          note.append(link);
+        } else {
+          note.append(item.label);
+        }
+      });
+      node.append(note);
+    }
+    return node;
+  }
+}
+
 // Home Assistant swaps window.customElements for a scoped registry while it
 // starts. This file is loaded before that happens (it is an "extra module"
 // of the integration, not a dashboard resource), and an element defined on
-// the old registry is invisible to dashboards: the card would show
-// "configuration error" on most page loads. So define the card only once the
+// the old registry is invisible to dashboards: the cards would show
+// "configuration error" on most page loads. So define them only once the
 // application element exists, which is after the swap.
+const CARDS = [
+  [CARD, VentsA21Card, "cardName", "cardDescription"],
+  [DETAILS_CARD, VentsA21DetailsCard, "detailsName", "detailsDescription"],
+];
+
 function register() {
-  if (!window.customElements.get(CARD)) window.customElements.define(CARD, VentsA21Card);
+  for (const [tag, cls] of CARDS) {
+    if (!window.customElements.get(tag)) window.customElements.define(tag, cls);
+  }
 }
 
 Promise.race([
@@ -624,14 +1008,17 @@ Promise.race([
   new Promise((resolve) => setTimeout(resolve, 10000)),
 ]).then(register);
 
-if (!(window.customCards || []).some((card) => card.type === CARD)) {
-  const french = (navigator.language || "").startsWith("fr");
+{
+  const text = TEXT[(navigator.language || "").startsWith("fr") ? "fr" : "en"];
   window.customCards = window.customCards || [];
-  window.customCards.push({
-    type: CARD,
-    name: TEXT[french ? "fr" : "en"].cardName,
-    description: TEXT[french ? "fr" : "en"].cardDescription,
-    preview: true,
-    documentationURL: "https://github.com/floecono/ha-vents-A21",
-  });
+  for (const [tag, , name, description] of CARDS) {
+    if (window.customCards.some((card) => card.type === tag)) continue;
+    window.customCards.push({
+      type: tag,
+      name: text[name],
+      description: text[description],
+      preview: true,
+      documentationURL: "https://github.com/floecono/ha-vents-A21",
+    });
+  }
 }
