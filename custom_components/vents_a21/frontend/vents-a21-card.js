@@ -314,21 +314,21 @@ function roundedPath(points, radius = STREAM_RADIUS) {
   return parts.join(" ");
 }
 
-// The exchanger branch starts and ends on the trunks, one corner radius
-// before the junction, so that its rounded corner leaves the trunk
-// smoothly; the trunks are drawn over that overlap. The detour starts at
-// the very end of the trunk and leaves it straight, out of its round cap.
+// The exchanger branch continues the trunk straight into the middle of a
+// slanted face of the exchanger and crosses it out of sight, under the
+// core; the detour leaves the end of the trunk in a straight line, out of
+// its round cap. Both branches share the width of the stream.
 const R = STREAM_RADIUS;
 const STREAMS = {
   fresh: {
     in: "M12 62 H148",
-    through: roundedPath([[148 - R, 62], [148, 62], [250, 138], [250 + R, 138]]),
+    through: roundedPath([[148, 62], [182, 62], [218, 138], [250, 138]]),
     around: roundedPath([[148, 62], [134, 100], [200, 164], [250, 138], [250 + R, 138]]),
     out: "M250 138 H380",
   },
   stale: {
     in: "M388 62 H252",
-    through: roundedPath([[252 + R, 62], [252, 62], [150, 138], [150 - R, 138]]),
+    through: roundedPath([[252, 62], [218, 62], [182, 138], [150, 138]]),
     around: roundedPath([[252, 62], [266, 100], [200, 164], [150, 138], [150 - R, 138]]),
     out: "M150 138 H20",
   },
@@ -392,7 +392,9 @@ const TEMPLATE = `
         <path class="head-arrow" data-arrow="supply" d="M378 127 L394 138 L378 149 Z"/>
         <path class="head-arrow" data-arrow="exhaust" d="M22 127 L6 138 L22 149 Z"/>
 
-        <path class="core" d="M200 54 L246 100 L200 146 L154 100 Z"/>
+        <!-- A counter-flow plate exchanger: a hexagonal block, the two
+             streams entering and leaving through its slanted faces. -->
+        <path class="core" d="M200 50 L236 74 L236 126 L200 150 L164 126 L164 74 Z"/>
         <text class="eff" x="200" y="104"></text>
         <text class="effLabel" x="200" y="118"></text>
 
