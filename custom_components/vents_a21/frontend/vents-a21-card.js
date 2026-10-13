@@ -30,6 +30,9 @@ const FILTERS = {
 
 // Alarm codes that only say "change the filters": the filter notice covers them.
 const FILTER_CODES = new Set([24, 29, 40]);
+// Warnings "bypass / rotary exchanger in manual mode": expected, and so not
+// shown, when the owner drives the bypass from this card.
+const MANUAL_BYPASS_CODES = new Set([38, 39]);
 
 // Days before the filter deadline from which the reminder is shown, unless
 // the card options say otherwise (0: only once the deadline is reached).
@@ -183,7 +186,7 @@ const IDLE = "var(--disabled-text-color, #9e9e9e)";
 
 const STYLE = `
   :host { --a21-green: #52ae32; display: block; }
-  ha-card { padding: 16px 16px 10px; overflow: hidden; }
+  ha-card { display: block; padding: 16px 16px 10px; overflow: hidden; }
   button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
   button:focus-visible, a:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; border-radius: 6px; }
 
@@ -247,7 +250,7 @@ const STYLE = `
   .bypassctl button:disabled { opacity: .45; cursor: default; }
 
   .facts { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 12px; }
-  .facts button { font-size: .875rem; line-height: 1.6; color: var(--secondary-text-color); }
+  .facts button { font-size: .875rem; line-height: 1.6; color: var(--secondary-text-color); text-align: left; }
   .facts b { font-weight: 500; color: var(--primary-text-color); font-variant-numeric: tabular-nums; }
   .facts .due b { color: var(--warning-color, #ffa600); }
 
@@ -613,6 +616,9 @@ class VentsA21Card extends HTMLElement {
       active = alarmState === "alarm" || alarmState === "warning" ? [{ type: alarmState }] : [];
     }
     active = active.filter((item) => !FILTER_CODES.has(item.code));
+    if (this._config.bypass_control) {
+      active = active.filter((item) => !MANUAL_BYPASS_CODES.has(item.code));
+    }
     for (const [type, element, label] of [
       ["alarm", this._el.alarm, text.alarm],
       ["warning", this._el.warning, text.warning],
@@ -865,7 +871,7 @@ class VentsA21Card extends HTMLElement {
 
 const DETAILS_STYLE = `
   :host { --a21-green: #52ae32; display: block; }
-  ha-card { padding: 16px 16px 10px; overflow: hidden; }
+  ha-card { display: block; padding: 16px 16px 10px; overflow: hidden; }
   a:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; border-radius: 4px; }
 
   .head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }

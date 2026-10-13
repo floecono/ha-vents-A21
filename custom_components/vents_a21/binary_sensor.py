@@ -36,7 +36,6 @@ from .const import (
     HR_COOLER_TYPE,
     HR_DEFROST_MODE,
     HR_MAIN_HEATER_TYPE,
-    IR_ALARM,
     IR_FILTER_STATE,
 )
 from .coordinator import A21ConfigEntry, A21Coordinator
@@ -64,7 +63,7 @@ BINARY_SENSORS: tuple[A21BinarySensorDescription, ...] = (
         key="alarm",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda data: (
-            None if data.ir(IR_ALARM) is None else data.ir(IR_ALARM) != 0
+            None if data.alarm_level is None else data.alarm_level != "ok"
         ),
     ),
     A21BinarySensorDescription(

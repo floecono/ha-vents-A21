@@ -185,7 +185,9 @@ async def test_bypass_and_rotor(
     simulator.set_temperature(1, 19.0)
     await entry.runtime_data.async_refresh()
     exchanger = section((await client.receive_json())["event"], "exchanger")
-    row = next(r for r in exchanger["rows"] if r["label"] == "Rendement de récupération")
+    row = next(
+        r for r in exchanger["rows"] if r["label"] == "Rendement de récupération"
+    )
     assert row["value"] == "Non mesurable"
     assert "2,4 °C d'écart, il en faut 4 °C" in row["hint"]
     simulator.set_temperature(1, 6.3)

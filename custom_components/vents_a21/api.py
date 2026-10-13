@@ -43,6 +43,9 @@ from .modbus import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# IR_ALARM: 0 none, 1 at least one alarm, 2 warnings only.
+ALARM_LEVELS = ("ok", "alarm", "warning")
+
 # Below this indoor/outdoor difference the efficiency figure is only noise:
 # the error of the three probes is divided by that difference.
 MIN_EFFICIENCY_DELTA = 4.0
@@ -97,6 +100,8 @@ class A21Data:
     discrete: list[bool | None]
     inputs: list[int | None]
     holdings: list[int | None]
+    # Alarm codes the owner asked not to be told about (see CONF_MANUAL_BYPASS).
+    ignored_codes: frozenset[int] = frozenset()
 
     def coil(self, address: int) -> bool | None:
         """Return a coil."""
@@ -134,12 +139,34 @@ class A21Data:
 
     @property
     def alarm_codes(self) -> list[int]:
-        """Return the active alarm codes (0 to 52)."""
+        """Return the active alarm codes (0 to 52), minus the ignored ones."""
         return [
             code
             for code in range(ALARM_CODE_COUNT)
-            if self.discrete[DI_ALARM_FIRST + code]
+            if self.discrete[DI_ALARM_FIRST + code] and code not in self.ignored_codes
         ]
+
+    @property
+    def ignored_active(self) -> bool:
+        """Return True when an ignored code is active right now."""
+        return any(self.discrete[DI_ALARM_FIRST + code] for code in self.ignored_codes)
+
+    @property
+    def alarm_level(self) -> str | None:
+        """Return "ok", "alarm" or "warning", as the unit reports it.
+
+        When an ignored code is active, the unit's own register still counts
+        it, so the level is worked out again from the remaining codes.
+        """
+        raw = self.inputs[IR_ALARM]
+        if raw is None:
+            return None
+        if not self.ignored_active:
+            return ALARM_LEVELS[raw] if raw < len(ALARM_LEVELS) else None
+        codes = self.active_codes(None)
+        if any(item.severity == ALARM for item in codes):
+            return "alarm"
+        return "warning" if codes else "ok"
 
     @property
     def temperature_difference(self) -> float | None:
@@ -248,6 +275,8 @@ class A21Api:
         self.port = port
         self._client = ModbusTcpClient(host, port, unit_id)
         self._lock = asyncio.Lock()
+        # Alarm codes left out of every snapshot (see CONF_MANUAL_BYPASS).
+        self.ignored_codes: frozenset[int] = frozenset()
         # Number of readable addresses per table, learnt on older firmware.
         self._limits: dict[str, int] = {}
 
@@ -304,6 +333,7 @@ class A21Api:
             holdings=await self._read_table(
                 "holding registers", client.read_holding_registers, HOLDING_COUNT
             ),
+            ignored_codes=self.ignored_codes,
         )
 
     async def _read_table(self, name: str, reader: _Reader, count: int) -> list:

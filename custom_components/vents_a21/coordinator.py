@@ -16,11 +16,13 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import A21Api, A21Data, CoilWrite, RegisterWrite, Write
 from .const import (
+    CONF_MANUAL_BYPASS,
     CONF_MODEL,
     CONF_UNIT_ID,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_UNIT_ID,
     DOMAIN,
+    MANUAL_BYPASS_CODES,
     MODEL_GENERIC,
     MODELS,
     Model,
@@ -30,6 +32,11 @@ from .modbus import ModbusError, ModbusExceptionResponse
 _LOGGER = logging.getLogger(__name__)
 
 type A21ConfigEntry = ConfigEntry[A21Coordinator]
+
+
+def ignored_codes(entry: A21ConfigEntry) -> frozenset[int]:
+    """Return the alarm codes the options say to leave out."""
+    return MANUAL_BYPASS_CODES if entry.options.get(CONF_MANUAL_BYPASS) else frozenset()
 
 
 class A21Coordinator(DataUpdateCoordinator[A21Data]):
@@ -53,6 +60,7 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
             entry.data[CONF_PORT],
             entry.data.get(CONF_UNIT_ID, DEFAULT_UNIT_ID),
         )
+        self.api.ignored_codes = ignored_codes(entry)
         self.model: Model = MODELS.get(
             entry.data.get(CONF_MODEL, MODEL_GENERIC), MODELS[MODEL_GENERIC]
         )

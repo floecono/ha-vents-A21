@@ -108,7 +108,7 @@ filter_link: true
 
 #### Commande manuelle du bypass
 
-Pour les utilisateurs avertis qui veulent piloter le bypass eux-mêmes (voir [Piloter le bypass soi-même](#piloter-le-bypass-soi-même)), la tuile peut afficher une rangée **Bypass : Auto / Ouvert / Fermé**. Désactivée par défaut, elle s'active dans l'éditeur de la tuile ou en YAML :
+Par défaut, la tuile se contente d'afficher l'état du bypass (fermé, ouvert, ou la position intermédiaire). Pour les utilisateurs avertis qui veulent le piloter eux-mêmes (voir [Piloter le bypass soi-même](#piloter-le-bypass-soi-même)), elle peut afficher en plus une rangée **Bypass : Auto / Ouvert / Fermé**. Désactivée par défaut, elle s'active dans l'éditeur de la tuile ou en YAML. Quand elle est active, la tuile ne signale plus l'avertissement « Bypass en mode manuel » que la machine émet tant qu'on lui a retiré la main : c'est voulu.
 
 ```yaml
 type: custom:vents-a21-card
@@ -125,6 +125,8 @@ Dans **Paramètres**, **Appareils et services**, ouvrez la machine : le bloc **C
 - **Qualité d'air** : seuils d'humidité, de CO₂, de PM2.5 et de COV, selon les sondes montées.
 - **Filtres** : intervalle de remplacement, remise à zéro du compteur.
 - **Divers** : sonde servant à la régulation, température de bascule hiver/été, mode du bypass.
+
+Les **options de l'intégration** (bouton **Configurer** sur la page de l'intégration) règlent l'intervalle de lecture et, pour ceux qui pilotent le bypass eux-mêmes, l'option **Bypass piloté par Home Assistant** (voir plus bas).
 
 Les réglages du **menu ingénieur** existent aussi, désactivés par défaut : activation des sondes et des entrées, type de batterie, protection antigel, corrections des sondes de température, temporisations, coefficients des régulateurs. Activez seulement ceux dont vous avez besoin, ils agissent directement sur la machine.
 
@@ -168,6 +170,8 @@ automation:
         data:
           option: auto
 ```
+
+Tant que le bypass n'est pas en **Automatique**, la machine émet l'avertissement « Bypass en mode manuel » (code 38). Si c'est votre choix, dites-le à l'intégration : **Paramètres**, **Appareils et services**, l'intégration, **Configurer**, puis cochez **Bypass piloté par Home Assistant**. Cet avertissement disparaît alors des tuiles, du capteur « Alarmes actives », du capteur d'état et du capteur binaire « Alarme » ; les autres alarmes et avertissements restent signalés normalement. Sans cette option, seule la tuile dont la commande du bypass est activée le passe sous silence.
 
 Deux précautions : en mode **Ouvert**, c'est vous qui décidez, la machine ne refermera pas le bypass si l'air extérieur devient froid ; pensez donc toujours à une automatisation de retour. Et sur les machines à préchauffage, laissez la protection antigel faire son travail en hiver en restant en **Automatique**.
 
@@ -227,7 +231,7 @@ C'est la méthode des gestions techniques de bâtiment : on ne sécurise pas le 
 - **Sortie Internet de la machine** : bloquez-la si vous n'utilisez pas le pilotage à distance de l'application mobile.
 - **Passerelle RS485 vers Ethernet** : si la machine est raccordée par une passerelle Modbus, celle-ci n'authentifie pas davantage ses clients. Placez-la dans le même réseau technique et changez son mot de passe d'administration.
 
-## État de la version 0.2.3
+## État de la version 0.2.4
 
 L'intégration est écrite d'après la table Modbus officielle de l'automate A21 (VENTS, document V55-8-1EN-02) et la notice de l'application DF Connect pour la signification des codes d'alarme. Elle est vérifiée contre un simulateur de la machine, par une suite de tests automatiques et par un essai dans une instance Home Assistant. Elle n'a pas encore été validée sur une machine réelle : vos retours sont les bienvenus, [ouvrez un ticket](https://github.com/floecono/ha-vents-A21/issues) en joignant les diagnostics.
 

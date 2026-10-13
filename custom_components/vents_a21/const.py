@@ -14,6 +14,9 @@ DOMAIN: Final = "vents_a21"
 CONF_UNIT_ID: Final = "unit_id"
 CONF_MODEL: Final = "model"
 CONF_ADVANCED: Final = "advanced"
+# Option: the bypass is driven from Home Assistant, so the warning the unit
+# raises while its bypass is in manual mode is expected and is not reported.
+CONF_MANUAL_BYPASS: Final = "manual_bypass"
 
 DEFAULT_PORT: Final = 502
 DEFAULT_UNIT_ID: Final = 1
@@ -63,6 +66,8 @@ DI_SUPPLY_FAN_SWITCH: Final = 16
 DI_EXTRACT_FAN_SWITCH: Final = 17
 DI_ALARM_FIRST: Final = 19
 ALARM_CODE_COUNT: Final = 53
+# Warnings "bypass in manual mode" and "rotary exchanger in manual mode".
+MANUAL_BYPASS_CODES: Final = frozenset({38, 39})
 DISCRETE_COUNT: Final = 72
 
 # --- Input registers (function 4) -------------------------------------------
