@@ -1,0 +1,374 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add a heat recovery ventilation unit",
+        "description": "Enter the IP address of the unit on your network (Wi-Fi or Ethernet). You can find it in the unit's mobile app or in your router's device list.\n\nNeed filters or accessories? [econology.fr](https://www.econology.fr/?utm_source=home-assistant&utm_medium=integration&utm_campaign=vents_a21)",
+        "data": {
+          "host": "IP address",
+          "model": "Model"
+        },
+        "data_description": {
+          "host": "Example: 192.168.1.50. Give it a fixed address in your router so it does not change.",
+          "model": "Used to name the device and to suggest the right replacement filters."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Advanced settings",
+            "data": {
+              "port": "Modbus TCP port",
+              "unit_id": "Modbus address"
+            },
+            "data_description": {
+              "port": "502 unless configured otherwise.",
+              "unit_id": "1 by default."
+            }
+          }
+        }
+      },
+      "reconfigure": {
+        "title": "Change the connection",
+        "data": {
+          "host": "IP address",
+          "model": "Model"
+        },
+        "data_description": {
+          "host": "Example: 192.168.1.50. Give it a fixed address in your router so it does not change.",
+          "model": "Used to name the device and to suggest the right replacement filters."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Advanced settings",
+            "data": {
+              "port": "Modbus TCP port",
+              "unit_id": "Modbus address"
+            },
+            "data_description": {
+              "port": "502 unless configured otherwise.",
+              "unit_id": "1 by default."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "The unit cannot be reached. Check the IP address, and that no other system (BMS, other home automation) already holds the Modbus TCP connection: the unit accepts only one.",
+      "not_a21": "A device answers at this address, but it is not an A21 controller."
+    },
+    "abort": {
+      "already_configured": "This unit is already configured.",
+      "reconfigure_successful": "Connection updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "data": {
+          "scan_interval": "Polling interval"
+        },
+        "data_description": {
+          "scan_interval": "Time between two readings of the unit (15 s by default)."
+        }
+      }
+    }
+  },
+  "selector": {
+    "model": {
+      "options": {
+        "zephyr_240_s_connect": "ECONOPRIME Zephyr 240 S Connect (ZEPH240A21)",
+        "zephyr_270_v_connect_r": "ECONOPRIME Zephyr 270 V Connect R (114800002)",
+        "zephyr_550_v_ph_connect_r": "ECONOPRIME Zephyr 550 V PH Connect R (114800003)",
+        "df_180_flat_connect": "ECONOPRIME DF 180 Flat Connect (DFF18021)",
+        "df_270_connect": "ECONOPRIME DF 270 Connect (DF27021)",
+        "df_350_connect": "ECONOPRIME DF 350 Connect (DF35021)",
+        "generic": "Other unit with A21 automation (VENTS, Blauberg…)"
+      }
+    }
+  },
+  "exceptions": {
+    "write_refused": {
+      "message": "The unit refused the command (Modbus code {code}). The value is probably outside the allowed range."
+    },
+    "write_failed": {
+      "message": "The command could not be sent to the unit: {error}"
+    }
+  },
+  "entity": {
+    "climate": {
+      "ventilation": {
+        "state_attributes": {
+          "fan_mode": {
+            "state": {
+              "1": "Speed 1",
+              "2": "Speed 2",
+              "3": "Speed 3",
+              "4": "Speed 4",
+              "5": "Speed 5",
+              "manual": "Manual"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "outdoor_temperature": {
+        "name": "Outdoor air"
+      },
+      "supply_temperature": {
+        "name": "Supply air"
+      },
+      "extract_temperature": {
+        "name": "Extract air"
+      },
+      "exhaust_temperature": {
+        "name": "Exhaust air"
+      },
+      "panel_temperature": {
+        "name": "Control panel temperature"
+      },
+      "after_preheater_temperature": {
+        "name": "Outdoor air after preheating"
+      },
+      "before_reheater_temperature": {
+        "name": "Supply air before reheating"
+      },
+      "return_water_temperature": {
+        "name": "Return water"
+      },
+      "humidity": {
+        "name": "Humidity"
+      },
+      "humidity_external": {
+        "name": "Humidity (external sensor)"
+      },
+      "co2": {
+        "name": "CO₂"
+      },
+      "co2_external": {
+        "name": "CO₂ (external sensor)"
+      },
+      "pm25": {
+        "name": "PM2.5"
+      },
+      "pm25_external": {
+        "name": "PM2.5 (external sensor)"
+      },
+      "voc": {
+        "name": "VOC"
+      },
+      "voc_external": {
+        "name": "VOC (external sensor)"
+      },
+      "analog_input": {
+        "name": "0-10 V input"
+      },
+      "supply_fan_speed": {
+        "name": "Supply fan"
+      },
+      "extract_fan_speed": {
+        "name": "Extract fan"
+      },
+      "supply_fan_rpm": {
+        "name": "Supply fan speed"
+      },
+      "extract_fan_rpm": {
+        "name": "Extract fan speed"
+      },
+      "supply_airflow": {
+        "name": "Supply airflow"
+      },
+      "extract_airflow": {
+        "name": "Extract airflow"
+      },
+      "supply_pressure": {
+        "name": "Supply pressure"
+      },
+      "extract_pressure": {
+        "name": "Extract pressure"
+      },
+      "bypass_position": {
+        "name": "Bypass opening"
+      },
+      "heat_recovery_efficiency": {
+        "name": "Heat recovery efficiency"
+      },
+      "filter_days_remaining": {
+        "name": "Filters: days remaining"
+      },
+      "filter_state": {
+        "name": "Filter state",
+        "state": {
+          "clean": "Clean",
+          "supply_clogged": "Outdoor air filter clogged",
+          "extract_clogged": "Extract air filter clogged",
+          "replace": "Replace"
+        }
+      },
+      "alarm_state": {
+        "name": "Unit status",
+        "state": {
+          "ok": "Normal",
+          "alarm": "Alarm",
+          "warning": "Warning"
+        }
+      },
+      "active_alarms": {
+        "name": "Active alarms",
+        "state_attributes": {
+          "codes": {
+            "name": "Codes"
+          }
+        }
+      },
+      "timer_remaining": {
+        "name": "Timer: time remaining"
+      },
+      "operating_time": {
+        "name": "Operating hours"
+      },
+      "rtc_battery": {
+        "name": "Clock battery"
+      },
+      "preheater_output": {
+        "name": "Preheater output"
+      },
+      "reheater_output": {
+        "name": "Reheater output"
+      },
+      "cooler_output": {
+        "name": "Cooler output"
+      }
+    },
+    "binary_sensor": {
+      "alarm": {
+        "name": "Alarm"
+      },
+      "filter": {
+        "name": "Filters"
+      },
+      "boost": {
+        "name": "Boost"
+      },
+      "fireplace": {
+        "name": "Fireplace mode"
+      },
+      "heating": {
+        "name": "Heating"
+      },
+      "cooling": {
+        "name": "Cooling"
+      },
+      "fire_alarm": {
+        "name": "Fire alarm"
+      },
+      "humidity_high": {
+        "name": "High humidity"
+      },
+      "co2_high": {
+        "name": "High CO₂"
+      },
+      "pm25_high": {
+        "name": "High PM2.5"
+      },
+      "voc_high": {
+        "name": "High VOC"
+      }
+    },
+    "switch": {
+      "timer": {
+        "name": "Timer"
+      },
+      "weekly_schedule": {
+        "name": "Weekly schedule"
+      },
+      "boost_switch_input": {
+        "name": "Boost switch input"
+      }
+    },
+    "button": {
+      "reset_filter_timer": {
+        "name": "Reset filter timer"
+      },
+      "reset_alarms": {
+        "name": "Reset alarms"
+      }
+    },
+    "select": {
+      "timer_speed": {
+        "name": "Timer speed",
+        "state": {
+          "standby": "Standby",
+          "1": "Speed 1",
+          "2": "Speed 2",
+          "3": "Speed 3",
+          "4": "Speed 4",
+          "5": "Speed 5"
+        }
+      },
+      "bypass_mode": {
+        "name": "Bypass mode",
+        "state": {
+          "closed": "Closed (heat recovery)",
+          "open": "Open (direct fresh air)",
+          "auto": "Automatic"
+        }
+      },
+      "temperature_sensor": {
+        "name": "Control sensor",
+        "state": {
+          "extract": "Extract air",
+          "panel": "Control panel",
+          "supply": "Supply air"
+        }
+      }
+    },
+    "number": {
+      "manual_speed": {
+        "name": "Manual speed"
+      },
+      "timer_duration": {
+        "name": "Timer duration"
+      },
+      "humidity_setpoint": {
+        "name": "Humidity threshold"
+      },
+      "co2_setpoint": {
+        "name": "CO₂ threshold"
+      },
+      "pm25_setpoint": {
+        "name": "PM2.5 threshold"
+      },
+      "voc_setpoint": {
+        "name": "VOC threshold"
+      },
+      "filter_interval": {
+        "name": "Filter replacement interval"
+      },
+      "boost_off_delay": {
+        "name": "Boost: switch-off delay"
+      },
+      "boost_on_delay": {
+        "name": "Boost: switch-on delay"
+      },
+      "boost_supply_speed": {
+        "name": "Boost: supply"
+      },
+      "boost_extract_speed": {
+        "name": "Boost: extract"
+      },
+      "supply_speed": {
+        "name": "Speed {speed}: supply"
+      },
+      "extract_speed": {
+        "name": "Speed {speed}: extract"
+      },
+      "supply_speed_standby": {
+        "name": "Standby: supply"
+      },
+      "extract_speed_standby": {
+        "name": "Standby: extract"
+      }
+    }
+  }
+}

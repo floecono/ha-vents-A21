@@ -1,0 +1,374 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ajouter une VMC double flux",
+        "description": "Saisissez l'adresse IP de la machine sur votre réseau (Wi-Fi ou Ethernet). Vous la trouvez dans l'application mobile de la machine ou dans la liste des appareils de votre box.\n\nBesoin de filtres ou d'accessoires ? [econology.fr](https://www.econology.fr/?utm_source=home-assistant&utm_medium=integration&utm_campaign=vents_a21)",
+        "data": {
+          "host": "Adresse IP",
+          "model": "Modèle"
+        },
+        "data_description": {
+          "host": "Exemple : 192.168.1.50. Donnez-lui une adresse fixe dans votre box pour qu'elle ne change pas.",
+          "model": "Sert à nommer l'appareil et à proposer les bons filtres de rechange."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Paramètres avancés",
+            "data": {
+              "port": "Port Modbus TCP",
+              "unit_id": "Adresse Modbus"
+            },
+            "data_description": {
+              "port": "502 sauf configuration particulière.",
+              "unit_id": "1 par défaut."
+            }
+          }
+        }
+      },
+      "reconfigure": {
+        "title": "Modifier la connexion",
+        "data": {
+          "host": "Adresse IP",
+          "model": "Modèle"
+        },
+        "data_description": {
+          "host": "Exemple : 192.168.1.50. Donnez-lui une adresse fixe dans votre box pour qu'elle ne change pas.",
+          "model": "Sert à nommer l'appareil et à proposer les bons filtres de rechange."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Paramètres avancés",
+            "data": {
+              "port": "Port Modbus TCP",
+              "unit_id": "Adresse Modbus"
+            },
+            "data_description": {
+              "port": "502 sauf configuration particulière.",
+              "unit_id": "1 par défaut."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de joindre la machine. Vérifiez l'adresse IP, et qu'aucun autre système (GTB, autre domotique) n'occupe déjà la connexion Modbus TCP : la machine n'en accepte qu'une.",
+      "not_a21": "Un appareil répond à cette adresse, mais ce n'est pas un automate A21."
+    },
+    "abort": {
+      "already_configured": "Cette machine est déjà configurée.",
+      "reconfigure_successful": "Connexion mise à jour."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "data": {
+          "scan_interval": "Intervalle de lecture"
+        },
+        "data_description": {
+          "scan_interval": "Temps entre deux lectures de la machine (15 s par défaut)."
+        }
+      }
+    }
+  },
+  "selector": {
+    "model": {
+      "options": {
+        "zephyr_240_s_connect": "ECONOPRIME Zephyr 240 S Connect (ZEPH240A21)",
+        "zephyr_270_v_connect_r": "ECONOPRIME Zephyr 270 V Connect R (114800002)",
+        "zephyr_550_v_ph_connect_r": "ECONOPRIME Zephyr 550 V PH Connect R (114800003)",
+        "df_180_flat_connect": "ECONOPRIME DF 180 Flat Connect (DFF18021)",
+        "df_270_connect": "ECONOPRIME DF 270 Connect (DF27021)",
+        "df_350_connect": "ECONOPRIME DF 350 Connect (DF35021)",
+        "generic": "Autre machine à automate A21 (VENTS, Blauberg…)"
+      }
+    }
+  },
+  "exceptions": {
+    "write_refused": {
+      "message": "La machine a refusé la commande (code Modbus {code}). La valeur est probablement hors de la plage autorisée."
+    },
+    "write_failed": {
+      "message": "La commande n'a pas pu être envoyée à la machine : {error}"
+    }
+  },
+  "entity": {
+    "climate": {
+      "ventilation": {
+        "state_attributes": {
+          "fan_mode": {
+            "state": {
+              "1": "Vitesse 1",
+              "2": "Vitesse 2",
+              "3": "Vitesse 3",
+              "4": "Vitesse 4",
+              "5": "Vitesse 5",
+              "manual": "Manuelle"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "outdoor_temperature": {
+        "name": "Air neuf"
+      },
+      "supply_temperature": {
+        "name": "Air soufflé"
+      },
+      "extract_temperature": {
+        "name": "Air extrait"
+      },
+      "exhaust_temperature": {
+        "name": "Air rejeté"
+      },
+      "panel_temperature": {
+        "name": "Température du boîtier de commande"
+      },
+      "after_preheater_temperature": {
+        "name": "Air neuf après préchauffage"
+      },
+      "before_reheater_temperature": {
+        "name": "Air soufflé avant post-chauffage"
+      },
+      "return_water_temperature": {
+        "name": "Retour d'eau"
+      },
+      "humidity": {
+        "name": "Humidité"
+      },
+      "humidity_external": {
+        "name": "Humidité (sonde externe)"
+      },
+      "co2": {
+        "name": "CO₂"
+      },
+      "co2_external": {
+        "name": "CO₂ (sonde externe)"
+      },
+      "pm25": {
+        "name": "PM2.5"
+      },
+      "pm25_external": {
+        "name": "PM2.5 (sonde externe)"
+      },
+      "voc": {
+        "name": "COV"
+      },
+      "voc_external": {
+        "name": "COV (sonde externe)"
+      },
+      "analog_input": {
+        "name": "Entrée 0-10 V"
+      },
+      "supply_fan_speed": {
+        "name": "Ventilateur de soufflage"
+      },
+      "extract_fan_speed": {
+        "name": "Ventilateur d'extraction"
+      },
+      "supply_fan_rpm": {
+        "name": "Régime du ventilateur de soufflage"
+      },
+      "extract_fan_rpm": {
+        "name": "Régime du ventilateur d'extraction"
+      },
+      "supply_airflow": {
+        "name": "Débit de soufflage"
+      },
+      "extract_airflow": {
+        "name": "Débit d'extraction"
+      },
+      "supply_pressure": {
+        "name": "Pression de soufflage"
+      },
+      "extract_pressure": {
+        "name": "Pression d'extraction"
+      },
+      "bypass_position": {
+        "name": "Ouverture du bypass"
+      },
+      "heat_recovery_efficiency": {
+        "name": "Rendement de récupération"
+      },
+      "filter_days_remaining": {
+        "name": "Filtres : jours restants"
+      },
+      "filter_state": {
+        "name": "État des filtres",
+        "state": {
+          "clean": "Propres",
+          "supply_clogged": "Filtre d'air neuf encrassé",
+          "extract_clogged": "Filtre d'air extrait encrassé",
+          "replace": "À remplacer"
+        }
+      },
+      "alarm_state": {
+        "name": "État de la machine",
+        "state": {
+          "ok": "Normal",
+          "alarm": "Alarme",
+          "warning": "Avertissement"
+        }
+      },
+      "active_alarms": {
+        "name": "Alarmes actives",
+        "state_attributes": {
+          "codes": {
+            "name": "Codes"
+          }
+        }
+      },
+      "timer_remaining": {
+        "name": "Minuterie : temps restant"
+      },
+      "operating_time": {
+        "name": "Heures de fonctionnement"
+      },
+      "rtc_battery": {
+        "name": "Pile de l'horloge"
+      },
+      "preheater_output": {
+        "name": "Puissance du préchauffage"
+      },
+      "reheater_output": {
+        "name": "Puissance du post-chauffage"
+      },
+      "cooler_output": {
+        "name": "Puissance du refroidissement"
+      }
+    },
+    "binary_sensor": {
+      "alarm": {
+        "name": "Alarme"
+      },
+      "filter": {
+        "name": "Filtres"
+      },
+      "boost": {
+        "name": "Boost"
+      },
+      "fireplace": {
+        "name": "Mode cheminée"
+      },
+      "heating": {
+        "name": "Chauffage"
+      },
+      "cooling": {
+        "name": "Refroidissement"
+      },
+      "fire_alarm": {
+        "name": "Alarme incendie"
+      },
+      "humidity_high": {
+        "name": "Humidité élevée"
+      },
+      "co2_high": {
+        "name": "CO₂ élevé"
+      },
+      "pm25_high": {
+        "name": "PM2.5 élevé"
+      },
+      "voc_high": {
+        "name": "COV élevé"
+      }
+    },
+    "switch": {
+      "timer": {
+        "name": "Minuterie"
+      },
+      "weekly_schedule": {
+        "name": "Programmation hebdomadaire"
+      },
+      "boost_switch_input": {
+        "name": "Entrée interrupteur boost"
+      }
+    },
+    "button": {
+      "reset_filter_timer": {
+        "name": "Réinitialiser le compteur des filtres"
+      },
+      "reset_alarms": {
+        "name": "Acquitter les alarmes"
+      }
+    },
+    "select": {
+      "timer_speed": {
+        "name": "Vitesse de la minuterie",
+        "state": {
+          "standby": "Veille",
+          "1": "Vitesse 1",
+          "2": "Vitesse 2",
+          "3": "Vitesse 3",
+          "4": "Vitesse 4",
+          "5": "Vitesse 5"
+        }
+      },
+      "bypass_mode": {
+        "name": "Mode du bypass",
+        "state": {
+          "closed": "Fermé (récupération de chaleur)",
+          "open": "Ouvert (air frais direct)",
+          "auto": "Automatique"
+        }
+      },
+      "temperature_sensor": {
+        "name": "Sonde de régulation",
+        "state": {
+          "extract": "Air extrait",
+          "panel": "Boîtier de commande",
+          "supply": "Air soufflé"
+        }
+      }
+    },
+    "number": {
+      "manual_speed": {
+        "name": "Vitesse manuelle"
+      },
+      "timer_duration": {
+        "name": "Durée de la minuterie"
+      },
+      "humidity_setpoint": {
+        "name": "Seuil d'humidité"
+      },
+      "co2_setpoint": {
+        "name": "Seuil de CO₂"
+      },
+      "pm25_setpoint": {
+        "name": "Seuil de PM2.5"
+      },
+      "voc_setpoint": {
+        "name": "Seuil de COV"
+      },
+      "filter_interval": {
+        "name": "Intervalle de remplacement des filtres"
+      },
+      "boost_off_delay": {
+        "name": "Boost : temporisation d'arrêt"
+      },
+      "boost_on_delay": {
+        "name": "Boost : temporisation de démarrage"
+      },
+      "boost_supply_speed": {
+        "name": "Boost : soufflage"
+      },
+      "boost_extract_speed": {
+        "name": "Boost : extraction"
+      },
+      "supply_speed": {
+        "name": "Vitesse {speed} : soufflage"
+      },
+      "extract_speed": {
+        "name": "Vitesse {speed} : extraction"
+      },
+      "supply_speed_standby": {
+        "name": "Veille : soufflage"
+      },
+      "extract_speed_standby": {
+        "name": "Veille : extraction"
+      }
+    }
+  }
+}
