@@ -45,6 +45,10 @@ Les autres machines à automate A21 (VENTS, Blauberg) utilisent la même table M
 - **Les réglages de l'application mobile** dans la page de l'appareil : puissance des ventilateurs de soufflage et d'extraction pour chaque vitesse, veille, boost et ses temporisations, seuils d'humidité et de qualité d'air, intervalle des filtres, minuterie, bascule hiver/été.
 - **Toutes les mesures dans l'historique** et **toutes les commandes pour vos automatisations** : marche/arrêt, mode, vitesses 1 à 5 et vitesse manuelle, consigne, minuterie, programmation hebdomadaire, bypass forcé ouvert ou fermé pour le rafraîchissement nocturne.
 
+### Tout ce que vous pouvez faire
+
+<img src="https://raw.githubusercontent.com/floecono/ha-vents-A21/main/docs/possibilites.png" alt="Vue d'ensemble : piloter, surveiller, régler, comprendre les alarmes, automatiser, deux tuiles livrées" width="900">
+
 ### Seules vos options apparaissent
 
 Les sondes d'humidité, de CO₂, de PM2.5 et de COV, l'entrée 0-10 V, les batteries de chauffage ou de refroidissement sont des options : toutes les machines ne les ont pas. L'intégration regarde ce qui est réellement monté et n'affiche que cela. Le reste existe, désactivé, dans la page de l'appareil : si vous ajoutez une sonde plus tard, activez son entité.
