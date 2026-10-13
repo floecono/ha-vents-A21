@@ -128,11 +128,32 @@ async def test_efficiency_hidden_when_meaningless(
     await hass.async_block_till_done()
     assert state(hass, "sensor", "heat_recovery_efficiency") == "unknown"
 
+    efficiency = hass.states.get("sensor.zephyr_240_s_connect_heat_recovery_efficiency")
+    assert efficiency.attributes["status"] == "bypass"
+
     simulator.set_input(51, 0)
     simulator.set_temperature(1, 19.0)  # outdoor almost as warm as indoor
     await entry.runtime_data.async_refresh()
     await hass.async_block_till_done()
     assert state(hass, "sensor", "heat_recovery_efficiency") == "unknown"
+    efficiency = hass.states.get("sensor.zephyr_240_s_connect_heat_recovery_efficiency")
+    assert efficiency.attributes["status"] == "small_difference"
+    assert efficiency.attributes["temperature_difference"] == pytest.approx(2.4)
+    assert efficiency.attributes["minimum_difference"] == 4
+
+    simulator.set_temperature(1, 17.0)  # 4.4 °C apart: enough for a figure
+    await entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    assert state(hass, "sensor", "heat_recovery_efficiency") == "50"
+    efficiency = hass.states.get("sensor.zephyr_240_s_connect_heat_recovery_efficiency")
+    assert efficiency.attributes["status"] == "measured"
+
+    simulator.set_discrete(7, True)  # the heater runs
+    await entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    assert state(hass, "sensor", "heat_recovery_efficiency") == "unknown"
+    efficiency = hass.states.get("sensor.zephyr_240_s_connect_heat_recovery_efficiency")
+    assert efficiency.attributes["status"] == "heating"
 
 
 async def test_negative_temperature(

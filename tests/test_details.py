@@ -179,6 +179,17 @@ async def test_bypass_and_rotor(
     assert bypass.attributes["exchanger"] == "bypass"
     assert bypass.attributes["bypassed_air"] == "extract"
 
+    # Heat is still recovered when indoor and outdoor air are close, only
+    # the figure is missing: the row says so instead of vanishing.
+    simulator.set_input(51, 0)
+    simulator.set_temperature(1, 19.0)
+    await entry.runtime_data.async_refresh()
+    exchanger = section((await client.receive_json())["event"], "exchanger")
+    row = next(r for r in exchanger["rows"] if r["label"] == "Rendement de récupération")
+    assert row["value"] == "Non mesurable"
+    assert "2,4 °C d'écart, il en faut 4 °C" in row["hint"]
+    simulator.set_temperature(1, 6.3)
+
     simulator.set_holding(57, 4)  # modulating rotary exchanger
     simulator.set_input(51, 40)
     simulator.set_input(45, 40)

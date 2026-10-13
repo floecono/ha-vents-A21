@@ -43,8 +43,19 @@ from .modbus import (
 
 _LOGGER = logging.getLogger(__name__)
 
-# Below this indoor/outdoor difference the efficiency figure is only noise.
-_MIN_EFFICIENCY_DELTA = 5.0
+# Below this indoor/outdoor difference the efficiency figure is only noise:
+# the error of the three probes is divided by that difference.
+MIN_EFFICIENCY_DELTA = 4.0
+
+# Why the efficiency can or cannot be worked out (A21Data.efficiency_status).
+EFFICIENCY_MEASURED = "measured"
+EFFICIENCY_OFF = "off"
+EFFICIENCY_NO_PROBE = "no_probe"
+EFFICIENCY_BYPASS = "bypass"
+EFFICIENCY_HEATING = "heating"
+EFFICIENCY_COOLING = "cooling"
+EFFICIENCY_PREHEATING = "preheating"
+EFFICIENCY_SMALL_DIFFERENCE = "small_difference"
 # Time the controller gets to apply a write before the state is read back.
 _SETTLE_DELAY = 0.3
 # The controller accepts a single TCP client; right after a disconnection it
@@ -131,26 +142,61 @@ class A21Data:
         ]
 
     @property
+    def temperature_difference(self) -> float | None:
+        """Return the gap between extract and outdoor air, in °C."""
+        outdoor = self.temperature(IR_TEMP_OUTDOOR)
+        extract = self.temperature(IR_TEMP_EXTRACT)
+        if outdoor is None or extract is None:
+            return None
+        return round(abs(extract - outdoor), 1)
+
+    @property
+    def efficiency_status(self) -> str:
+        """Say whether the efficiency can be worked out, and if not, why.
+
+        The exchanger keeps recovering heat in the "heating", "cooling",
+        "preheating" and "small_difference" cases: only the figure is
+        missing, because something else changes the supply temperature or
+        because indoor and outdoor air are too close to measure it.
+        """
+        difference = self.temperature_difference
+        if difference is None or self.temperature(IR_TEMP_SUPPLY) is None:
+            return EFFICIENCY_NO_PROBE
+        if not self.is_on:
+            return EFFICIENCY_OFF
+        if self.inputs[IR_BYPASS_STATE]:
+            return EFFICIENCY_BYPASS
+        if self.discrete[DI_STATUS_HEATER]:
+            return EFFICIENCY_HEATING
+        if self.discrete[DI_STATUS_COOLER]:
+            return EFFICIENCY_COOLING
+        if self.inputs[IR_PREHEATER_OUTPUT]:
+            return EFFICIENCY_PREHEATING
+        if difference < MIN_EFFICIENCY_DELTA:
+            return EFFICIENCY_SMALL_DIFFERENCE
+        return EFFICIENCY_MEASURED
+
+    @property
     def efficiency(self) -> int | None:
         """Return the supply-side heat recovery efficiency in percent.
 
         (supply - outdoor) / (extract - outdoor). Only meaningful while the
         exchanger alone changes the supply temperature, so nothing is
-        reported when a heater or cooler runs or when the bypass is open.
+        reported when a heater or cooler runs, when the bypass is open or
+        when indoor and outdoor air are too close: see efficiency_status.
         """
         outdoor = self.temperature(IR_TEMP_OUTDOOR)
         supply = self.temperature(IR_TEMP_SUPPLY)
         extract = self.temperature(IR_TEMP_EXTRACT)
-        if outdoor is None or supply is None or extract is None or not self.is_on:
+        if (
+            outdoor is None
+            or supply is None
+            or extract is None
+            or self.efficiency_status != EFFICIENCY_MEASURED
+        ):
             return None
-        if self.discrete[DI_STATUS_HEATER] or self.discrete[DI_STATUS_COOLER]:
-            return None
-        if self.inputs[IR_BYPASS_STATE] or self.inputs[IR_PREHEATER_OUTPUT]:
-            return None
-        delta = extract - outdoor
-        if abs(delta) < _MIN_EFFICIENCY_DELTA:
-            return None
-        return round(min(max((supply - outdoor) / delta, 0.0), 1.0) * 100)
+        ratio = (supply - outdoor) / (extract - outdoor)
+        return round(min(max(ratio, 0.0), 1.0) * 100)
 
     @property
     def timer_remaining(self) -> int | None:

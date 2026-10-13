@@ -45,6 +45,20 @@ const TEXT = {
     outside: "Extérieur",
     inside: "Intérieur",
     recovered: "récupérés",
+    exchangerOn: "Actif",
+    gapBelow: (n) => `écart < ${n} °C`,
+    whyHeating: "chauffage",
+    whyCooling: "refroidit",
+    whyPreheating: "antigel",
+    recovery: "Récupération",
+    recoveryGap: (gap) => `active, rendement non mesurable (${gap} °C d'écart)`,
+    recoveryHeating: "active, rendement non mesurable (chauffage)",
+    recoveryCooling: "active, rendement non mesurable (refroidissement)",
+    recoveryPreheating: "active, rendement non mesurable (préchauffage antigel)",
+    bypassControl: "Commande du bypass",
+    bypassAuto: "Auto",
+    bypassOpened: "Ouvert",
+    bypassShut: "Fermé",
     bypass: "Bypass",
     bypassOpen: "ouvert",
     bypassClosed: "fermé",
@@ -86,6 +100,7 @@ const TEXT = {
     name: "Nom affiché (facultatif)",
     filterLink: "Afficher le lien pour commander les filtres quand ils sont à remplacer",
     filterDays: "Rappel des filtres : nombre de jours avant l'échéance (0 : à l'échéance seulement)",
+    bypassOption: "Afficher la commande manuelle du bypass (automatique, ouvert, fermé)",
     cardName: "VMC double flux ECONOPRIME / VENTS A21",
     cardDescription: "Vue de la machine : températures des quatre flux d'air, rendement, bypass, vitesses, filtres.",
     detailsName: "VMC double flux : toutes les mesures",
@@ -99,6 +114,20 @@ const TEXT = {
     outside: "Outside",
     inside: "Inside",
     recovered: "recovered",
+    exchangerOn: "Active",
+    gapBelow: (n) => `gap < ${n} °C`,
+    whyHeating: "heating",
+    whyCooling: "cooling",
+    whyPreheating: "frost guard",
+    recovery: "Heat recovery",
+    recoveryGap: (gap) => `active, efficiency not measurable (${gap} °C apart)`,
+    recoveryHeating: "active, efficiency not measurable (heating)",
+    recoveryCooling: "active, efficiency not measurable (cooling)",
+    recoveryPreheating: "active, efficiency not measurable (preheating)",
+    bypassControl: "Bypass control",
+    bypassAuto: "Auto",
+    bypassOpened: "Open",
+    bypassShut: "Closed",
     bypass: "Bypass",
     bypassOpen: "open",
     bypassClosed: "closed",
@@ -140,6 +169,7 @@ const TEXT = {
     name: "Displayed name (optional)",
     filterLink: "Show the link to order filters when they need replacing",
     filterDays: "Filter reminder: days before the deadline (0: only at the deadline)",
+    bypassOption: "Show the manual bypass control (automatic, open, closed)",
     cardName: "ECONOPRIME / VENTS A21 ventilation unit",
     cardDescription: "View of the unit: temperature of the four air streams, efficiency, bypass, speeds, filters.",
     detailsName: "Ventilation unit: every measurement",
@@ -206,6 +236,15 @@ const STYLE = `
   .speeds button[aria-pressed="true"] { background: var(--a21-green); border-color: var(--a21-green); color: #fff; font-weight: 500; }
   .speeds button[data-mode="manual"] { flex: 0 0 auto; padding: 0 12px; }
   .speeds button:disabled { opacity: .45; cursor: default; }
+
+  .bypassctl { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+  .bypassctl > span { flex: 1 1 0; min-width: 0; font-size: .875rem; color: var(--secondary-text-color); }
+  .bypassctl button { flex: 0 0 auto; height: 34px; padding: 0 14px; border-radius: 10px; font-size: .875rem;
+                      white-space: nowrap;
+                      border: 1.5px solid var(--divider-color); color: var(--primary-text-color);
+                      transition: background-color .15s, border-color .15s, color .15s; }
+  .bypassctl button[aria-pressed="true"] { background: var(--a21-green); border-color: var(--a21-green); color: #fff; font-weight: 500; }
+  .bypassctl button:disabled { opacity: .45; cursor: default; }
 
   .facts { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 12px; }
   .facts button { font-size: .875rem; line-height: 1.6; color: var(--secondary-text-color); }
@@ -308,6 +347,7 @@ const TEMPLATE = `
       </svg>
 
       <div class="speeds" role="group"></div>
+      <div class="bypassctl" role="group" hidden><span></span></div>
       <div class="facts"></div>
     </div>
     <div class="empty" hidden></div>
@@ -337,6 +377,7 @@ const SOURCES = {
   supplyFan: "sensor.supply_fan_speed",
   extractFan: "sensor.extract_fan_speed",
   bypass: "sensor.bypass_position",
+  bypassMode: "select.bypass_mode",
   filterDays: "sensor.filter_days_remaining",
   filterAlert: "binary_sensor.filter",
   alarmState: "sensor.alarm_state",
@@ -374,6 +415,7 @@ const FORM_LABELS = {
   name: "name",
   filter_link: "filterLink",
   filter_reminder_days: "filterDays",
+  bypass_control: "bypassOption",
 };
 
 /** Options shown by the visual editor of both cards, plus their own extras. */
@@ -404,6 +446,7 @@ class VentsA21Card extends HTMLElement {
         selector: { number: { min: 0, max: FILTER_SOON_MAX, step: 1, mode: "box" } },
       },
       { name: "filter_link", selector: { boolean: {} } },
+      { name: "bypass_control", selector: { boolean: {} } },
     ]);
   }
 
@@ -444,6 +487,7 @@ class VentsA21Card extends HTMLElement {
       eff: root.querySelector(".eff"),
       effLabel: root.querySelector(".effLabel"),
       speeds: root.querySelector(".speeds"),
+      bypassControl: root.querySelector(".bypassctl"),
       facts: root.querySelector(".facts"),
       brand: root.querySelector(".brand a"),
     };
@@ -452,6 +496,10 @@ class VentsA21Card extends HTMLElement {
     this._el.speeds.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-mode]");
       if (button) this._setSpeed(button.dataset.mode);
+    });
+    this._el.bypassControl.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-option]");
+      if (button) this._setBypass(button.dataset.option);
     });
     root.addEventListener("click", (event) => {
       const target = event.target.closest("[data-more]");
@@ -506,7 +554,19 @@ class VentsA21Card extends HTMLElement {
       Object.values(ids).map((id) => {
         const s = hass.states[id];
         const a = s?.attributes;
-        return s && [s.state, a.fan_mode, a.fan_modes, a.codes, a.exchanger, a.bypassed_air];
+        return (
+          s && [
+            s.state,
+            a.fan_mode,
+            a.fan_modes,
+            a.codes,
+            a.exchanger,
+            a.bypassed_air,
+            a.status,
+            a.temperature_difference,
+            a.options,
+          ]
+        );
       }),
     ]);
     if (signature === this._signature) return;
@@ -647,12 +707,29 @@ class VentsA21Card extends HTMLElement {
       if (detour) this._el.streams.append(group);
     }
 
-    const efficiency = number(state("efficiency"));
+    const efficiencyState = state("efficiency");
+    const efficiency = number(efficiencyState);
     const diverted = on && efficiency === null && bypass > 0;
-    this._el.eff.classList.toggle("word", diverted);
+    // Heat is recovered but cannot be put into a figure: the heater, cooler
+    // or preheater changes the supply temperature too, or indoor and outdoor
+    // air are too close. Say that the exchanger works, never leave a blank.
+    const why = on && efficiency === null && !diverted ? efficiencyState?.attributes.status : null;
+    const unmeasured = {
+      small_difference: [
+        text.gapBelow(efficiencyState?.attributes.minimum_difference ?? 4),
+        text.recoveryGap(formatter.format(efficiencyState?.attributes.temperature_difference ?? 0)),
+      ],
+      heating: [text.whyHeating, text.recoveryHeating],
+      cooling: [text.whyCooling, text.recoveryCooling],
+      preheating: [text.whyPreheating, text.recoveryPreheating],
+    }[why];
+    this._el.eff.classList.toggle("word", diverted || Boolean(unmeasured));
     if (on && efficiency !== null) {
       this._el.eff.textContent = `${Math.round(efficiency)} %`;
       this._el.effLabel.textContent = text.recovered;
+    } else if (unmeasured) {
+      this._el.eff.textContent = text.exchangerOn;
+      this._el.effLabel.textContent = unmeasured[0];
     } else if (diverted && rotary) {
       this._el.eff.textContent = text.rotor;
       this._el.effLabel.textContent = bypass >= 100 ? text.rotorStopped : `${100 - bypass} %`;
@@ -686,9 +763,35 @@ class VentsA21Card extends HTMLElement {
       }),
     );
 
+    // --- bypass control (opt-in) --------------------------------------------
+    const bypassMode = state("bypassMode");
+    const showBypass = Boolean(this._config.bypass_control) && Boolean(bypassMode) && !rotary;
+    this._el.bypassControl.hidden = !showBypass;
+    if (showBypass) {
+      const labels = { auto: text.bypassAuto, open: text.bypassOpened, closed: text.bypassShut };
+      const offered = bypassMode.attributes.options || [];
+      const label = this._el.bypassControl.querySelector("span");
+      label.textContent = text.bypass;
+      this._el.bypassControl.setAttribute("aria-label", text.bypassControl);
+      this._el.bypassControl.replaceChildren(
+        label,
+        ...["auto", "open", "closed"]
+          .filter((option) => offered.includes(option))
+          .map((option) => {
+            const button = document.createElement("button");
+            button.dataset.option = option;
+            button.textContent = labels[option];
+            button.setAttribute("aria-pressed", String(bypassMode.state === option));
+            button.disabled = unavailable || bypassMode.state === "unavailable";
+            return button;
+          }),
+      );
+    }
+
     // --- facts --------------------------------------------------------------
     const facts = [];
     const fact = (key, label, value, cls) => facts.push({ key, label, value, cls });
+    if (unmeasured) fact("efficiency", text.recovery, unmeasured[1]);
     const humidity = number(state("humidity"));
     if (humidity !== null) fact("humidity", text.humidity, `${Math.round(humidity)} %`);
     const co2 = number(state("co2"));
@@ -739,6 +842,12 @@ class VentsA21Card extends HTMLElement {
       this._hass.callService("climate", "turn_on", { entity_id: entityId });
     }
     this._hass.callService("climate", "set_fan_mode", { entity_id: entityId, fan_mode: mode });
+  }
+
+  _setBypass(option) {
+    const entityId = this._ids?.bypassMode;
+    if (!entityId) return;
+    this._hass.callService("select", "select_option", { entity_id: entityId, option });
   }
 
   _moreInfo(key) {

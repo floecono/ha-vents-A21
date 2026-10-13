@@ -106,6 +106,15 @@ filter_reminder_days: 30
 filter_link: true
 ```
 
+#### Commande manuelle du bypass
+
+Pour les utilisateurs avertis qui veulent piloter le bypass eux-mêmes (voir [Piloter le bypass soi-même](#piloter-le-bypass-soi-même)), la tuile peut afficher une rangée **Bypass : Auto / Ouvert / Fermé**. Désactivée par défaut, elle s'active dans l'éditeur de la tuile ou en YAML :
+
+```yaml
+type: custom:vents-a21-card
+bypass_control: true
+```
+
 ## Réglages
 
 Dans **Paramètres**, **Appareils et services**, ouvrez la machine : le bloc **Configuration** reprend les réglages de l'application mobile.
@@ -120,6 +129,47 @@ Dans **Paramètres**, **Appareils et services**, ouvrez la machine : le bloc **C
 Les réglages du **menu ingénieur** existent aussi, désactivés par défaut : activation des sondes et des entrées, type de batterie, protection antigel, corrections des sondes de température, temporisations, coefficients des régulateurs. Activez seulement ceux dont vous avez besoin, ils agissent directement sur la machine.
 
 Deux choses ne sont volontairement pas proposées : la remise aux réglages d'usine et le mot de passe du menu ingénieur.
+
+### Piloter le bypass soi-même
+
+En mode **Automatique**, la machine ouvre et ferme le bypass selon ses propres règles (température de bascule hiver/été, consigne). Si vous préférez décider vous-même, par exemple pour un rafraîchissement nocturne (free cooling) à vos conditions, l'entité **Mode du bypass** de la machine accepte trois valeurs : **Automatique**, **Ouvert** (l'air neuf contourne l'échangeur) et **Fermé** (récupération de chaleur). Elle se pilote depuis la page de l'appareil, depuis la tuile si vous activez sa commande manuelle, ou par automatisation.
+
+Exemple : ouvrir le bypass la nuit en été quand l'air extérieur est plus frais que l'intérieur, et rendre la main à la machine le matin.
+
+```yaml
+automation:
+  - alias: "VMC : free cooling nocturne"
+    triggers:
+      - trigger: time
+        at: "22:30:00"
+    conditions:
+      - condition: numeric_state
+        entity_id: sensor.vmc_temperature_exterieure   # adaptez les noms d'entités à votre machine
+        below: 20
+      - condition: template
+        value_template: >
+          {{ states('sensor.vmc_temperature_exterieure') | float
+             < states('sensor.vmc_temperature_extraite') | float - 2 }}
+    actions:
+      - action: select.select_option
+        target:
+          entity_id: select.vmc_mode_du_bypass
+        data:
+          option: open      # valeurs possibles : auto, open, closed
+
+  - alias: "VMC : retour en automatique"
+    triggers:
+      - trigger: time
+        at: "07:00:00"
+    actions:
+      - action: select.select_option
+        target:
+          entity_id: select.vmc_mode_du_bypass
+        data:
+          option: auto
+```
+
+Deux précautions : en mode **Ouvert**, c'est vous qui décidez, la machine ne refermera pas le bypass si l'air extérieur devient froid ; pensez donc toujours à une automatisation de retour. Et sur les machines à préchauffage, laissez la protection antigel faire son travail en hiver en restant en **Automatique**.
 
 ## Alarmes et avertissements
 
@@ -148,7 +198,7 @@ automation:
 
 ## Bon à savoir
 
-- **Rendement de récupération** : calculé côté air neuf, (air soufflé − air neuf) ÷ (air extrait − air neuf). Il n'est affiché que lorsqu'il a un sens : machine en marche, bypass fermé, pas de batterie de chauffage en action, et au moins 5 °C d'écart entre intérieur et extérieur.
+- **Rendement de récupération** : calculé côté air neuf, (air soufflé − air neuf) ÷ (air extrait − air neuf). Un chiffre n'est donné que lorsqu'il a un sens : machine en marche, bypass fermé, pas de batterie en action, et au moins 4 °C d'écart entre intérieur et extérieur. En dessous, l'erreur des sondes, divisée par un écart trop petit, rendrait le chiffre faux. L'échangeur récupère pourtant bien la chaleur dans ce cas : la tuile l'indique (« Actif », « Récupération active, rendement non mesurable ») au lieu de laisser un vide, et le capteur `heat_recovery_efficiency` porte un attribut `status` qui donne la raison (`small_difference`, `heating`, `cooling`, `preheating`, `bypass`, `off`).
 - **Intervalle de lecture** : 15 secondes par défaut, réglable dans les options de l'intégration.
 - **Échangeur** : les machines ECONOPRIME ont un échangeur à plaques avec bypass. L'automate A21 sait aussi piloter un échangeur rotatif, qu'on trouve chez d'autres marques : l'intégration le reconnaît et adapte ses libellés, mais ce cas ne concerne pas la gamme.
 - **Programmation hebdomadaire** : elle s'active et se désactive depuis Home Assistant. Ses créneaux se règlent pour l'instant dans l'application mobile.
@@ -177,7 +227,7 @@ C'est la méthode des gestions techniques de bâtiment : on ne sécurise pas le 
 - **Sortie Internet de la machine** : bloquez-la si vous n'utilisez pas le pilotage à distance de l'application mobile.
 - **Passerelle RS485 vers Ethernet** : si la machine est raccordée par une passerelle Modbus, celle-ci n'authentifie pas davantage ses clients. Placez-la dans le même réseau technique et changez son mot de passe d'administration.
 
-## État de la version 0.2.2
+## État de la version 0.2.3
 
 L'intégration est écrite d'après la table Modbus officielle de l'automate A21 (VENTS, document V55-8-1EN-02) et la notice de l'application DF Connect pour la signification des codes d'alarme. Elle est vérifiée contre un simulateur de la machine, par une suite de tests automatiques et par un essai dans une instance Home Assistant. Elle n'a pas encore été validée sur une machine réelle : vos retours sont les bienvenus, [ouvrez un ticket](https://github.com/floecono/ha-vents-A21/issues) en joignant les diagnostics.
 

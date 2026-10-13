@@ -16,7 +16,14 @@ from __future__ import annotations
 from typing import Any
 
 from .alarms import ALARM, WARNING, language_of
-from .api import A21Data
+from .api import (
+    EFFICIENCY_COOLING,
+    EFFICIENCY_HEATING,
+    EFFICIENCY_PREHEATING,
+    EFFICIENCY_SMALL_DIFFERENCE,
+    MIN_EFFICIENCY_DELTA,
+    A21Data,
+)
 from .const import (
     ACCESSORIES,
     CL_10V_SENSOR_CTRL,
@@ -225,6 +232,21 @@ _T: dict[str, dict[str, str]] = {
         "x_side_1": "Air extrait",
         "x_signal": "Signal de commande",
         "x_efficiency": "Rendement de récupération",
+        "x_efficiency_unmeasured": "Non mesurable",
+        "x_efficiency_small_difference": (
+            "L'échangeur récupère la chaleur, mais intérieur et extérieur sont"
+            " trop proches pour chiffrer le rendement : {gap} d'écart, il en"
+            " faut {minimum}."
+        ),
+        "x_efficiency_heating": (
+            "L'échangeur récupère la chaleur, mais le chauffage fausse la mesure."
+        ),
+        "x_efficiency_cooling": (
+            "L'échangeur récupère la chaleur, mais le refroidissement fausse la mesure."
+        ),
+        "x_efficiency_preheating": (
+            "L'échangeur récupère la chaleur, mais le préchauffage fausse la mesure."
+        ),
         "x_frost": "Protection antigel",
         "x_frost_0": "Désactivée",
         "x_frost_1": "Par préchauffage",
@@ -369,6 +391,21 @@ _T: dict[str, dict[str, str]] = {
         "x_side_1": "Extract air",
         "x_signal": "Control signal",
         "x_efficiency": "Heat recovery efficiency",
+        "x_efficiency_unmeasured": "Cannot be measured",
+        "x_efficiency_small_difference": (
+            "The exchanger is recovering heat, but indoor and outdoor air are"
+            " too close to work out the efficiency: {gap} apart, {minimum}"
+            " needed."
+        ),
+        "x_efficiency_heating": (
+            "The exchanger is recovering heat, but the heater distorts the reading."
+        ),
+        "x_efficiency_cooling": (
+            "The exchanger is recovering heat, but the cooler distorts the reading."
+        ),
+        "x_efficiency_preheating": (
+            "The exchanger is recovering heat, but the preheater distorts the reading."
+        ),
         "x_frost": "Frost protection",
         "x_frost_0": "Disabled",
         "x_frost_1": "By preheating",
@@ -473,6 +510,17 @@ class _Builder:
         if level:
             row["level"] = level
         return row
+
+
+# Cases where heat is recovered but the efficiency cannot be worked out.
+_RECOVERING_UNMEASURED = frozenset(
+    {
+        EFFICIENCY_SMALL_DIFFERENCE,
+        EFFICIENCY_HEATING,
+        EFFICIENCY_COOLING,
+        EFFICIENCY_PREHEATING,
+    }
+)
 
 
 def _present(data: A21Data, address: int, *coils: int) -> bool:
@@ -742,9 +790,16 @@ def _exchanger(b: _Builder) -> None:
             rows.append(b.row("x_signal", b.value(min(signal, 100), "%")))
 
     efficiency = data.efficiency
-    rows.append(
-        b.row("x_efficiency", None if efficiency is None else b.value(efficiency, "%"))
-    )
+    status = data.efficiency_status
+    if efficiency is not None:
+        rows.append(b.row("x_efficiency", b.value(efficiency, "%")))
+    elif status in _RECOVERING_UNMEASURED:
+        # The exchanger works, only the figure is missing: say so, and why.
+        gap = data.temperature_difference or 0.0
+        hint = b.text[f"x_efficiency_{status}"].format(
+            gap=b.value(gap, "°C", 1), minimum=b.value(MIN_EFFICIENCY_DELTA, "°C")
+        )
+        rows.append(b.row("x_efficiency", b.text["x_efficiency_unmeasured"], hint=hint))
     frost = data.hr(HR_DEFROST_MODE)
     frost_text = b.choice("x_frost", frost)
     if frost == 2 and kind in ROTARY_TYPES:
