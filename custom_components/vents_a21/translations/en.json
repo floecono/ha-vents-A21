@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Add a heat recovery ventilation unit",
-        "description": "Enter the IP address of the unit on your network (Wi-Fi or Ethernet). You can find it in the unit's mobile app or in your router's device list.\n\nNeed filters or accessories? [econology.fr](https://www.econology.fr/?utm_source=home-assistant&utm_medium=integration&utm_campaign=vents_a21)",
+        "description": "Enter the IP address of the unit on your network (Wi-Fi or Ethernet). You can find it in the unit's mobile app or in your router's device list.\n\nNeed filters or accessories? [econology.fr]({shop_url})",
         "data": {
           "host": "IP address",
           "model": "Model"
