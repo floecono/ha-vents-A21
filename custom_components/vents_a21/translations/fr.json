@@ -188,7 +188,23 @@
         "name": "Pression d'extraction"
       },
       "bypass_position": {
-        "name": "Ouverture du bypass"
+        "name": "Ouverture du bypass",
+        "state_attributes": {
+          "exchanger": {
+            "name": "Échangeur",
+            "state": {
+              "bypass": "À bypass",
+              "rotary": "Rotatif"
+            }
+          },
+          "bypassed_air": {
+            "name": "Air dévié",
+            "state": {
+              "outdoor": "Air neuf",
+              "extract": "Air extrait"
+            }
+          }
+        }
       },
       "heat_recovery_efficiency": {
         "name": "Rendement de récupération"
@@ -218,6 +234,15 @@
         "state_attributes": {
           "codes": {
             "name": "Codes"
+          },
+          "alarms": {
+            "name": "Alarmes"
+          },
+          "warnings": {
+            "name": "Avertissements"
+          },
+          "active": {
+            "name": "Détail"
           }
         }
       },
@@ -284,6 +309,57 @@
       },
       "boost_switch_input": {
         "name": "Entrée interrupteur boost"
+      },
+      "humidity_sensor": {
+        "name": "Sonde d'humidité"
+      },
+      "humidity_sensor_external": {
+        "name": "Sonde d'humidité externe"
+      },
+      "co2_sensor": {
+        "name": "Sonde de CO₂"
+      },
+      "co2_sensor_external": {
+        "name": "Sonde de CO₂ externe"
+      },
+      "pm25_sensor": {
+        "name": "Sonde de PM2.5"
+      },
+      "pm25_sensor_external": {
+        "name": "Sonde de PM2.5 externe"
+      },
+      "voc_sensor": {
+        "name": "Sonde de COV"
+      },
+      "voc_sensor_external": {
+        "name": "Sonde de COV externe"
+      },
+      "analog_input": {
+        "name": "Commande externe 0-10 V"
+      },
+      "fireplace_switch_input": {
+        "name": "Entrée interrupteur cheminée"
+      },
+      "fire_alarm_input": {
+        "name": "Entrée alarme incendie"
+      },
+      "cloud_control": {
+        "name": "Pilotage par le cloud"
+      },
+      "min_supply_temperature_control": {
+        "name": "Surveillance de la température minimale de soufflage"
+      },
+      "auto_airflow_reduction": {
+        "name": "Réduction automatique du débit si le chauffage ne suffit pas"
+      },
+      "water_pressure_sensor": {
+        "name": "Capteur de pression d'eau"
+      },
+      "water_flow_sensor": {
+        "name": "Capteur de débit d'eau"
+      },
+      "water_auto_restart": {
+        "name": "Redémarrage automatique après défaut de retour d'eau"
       }
     },
     "button": {
@@ -292,6 +368,9 @@
       },
       "reset_alarms": {
         "name": "Acquitter les alarmes"
+      },
+      "set_clock": {
+        "name": "Mettre l'horloge à l'heure"
       }
     },
     "select": {
@@ -321,6 +400,74 @@
           "panel": "Boîtier de commande",
           "supply": "Air soufflé"
         }
+      },
+      "timer_temperature": {
+        "name": "Température pendant la minuterie",
+        "state": {
+          "off": "Ventilation seule",
+          "15": "15 °C",
+          "16": "16 °C",
+          "17": "17 °C",
+          "18": "18 °C",
+          "19": "19 °C",
+          "20": "20 °C",
+          "21": "21 °C",
+          "22": "22 °C",
+          "23": "23 °C",
+          "24": "24 °C",
+          "25": "25 °C",
+          "26": "26 °C",
+          "27": "27 °C",
+          "28": "28 °C",
+          "29": "29 °C",
+          "30": "30 °C"
+        }
+      },
+      "heater_type": {
+        "name": "Type de batterie de chauffage",
+        "state": {
+          "none": "Aucune",
+          "electric": "Électrique",
+          "water": "À eau"
+        }
+      },
+      "cooler_type": {
+        "name": "Type de refroidissement",
+        "state": {
+          "none": "Aucun",
+          "on_off": "Tout ou rien",
+          "analog": "Modulant 0-10 V"
+        }
+      },
+      "frost_protection": {
+        "name": "Protection antigel de l'échangeur",
+        "state": {
+          "off": "Désactivée",
+          "preheating": "Par préchauffage",
+          "bypass": "Par bypass",
+          "supply_fan": "Par arrêt du soufflage"
+        }
+      },
+      "heater_mode": {
+        "name": "Commande du chauffage",
+        "state": {
+          "manual": "Manuelle",
+          "auto": "Automatique"
+        }
+      },
+      "cooler_mode": {
+        "name": "Commande du refroidissement",
+        "state": {
+          "manual": "Manuelle",
+          "auto": "Automatique"
+        }
+      },
+      "preheater_mode": {
+        "name": "Commande du préchauffage",
+        "state": {
+          "manual": "Manuelle",
+          "auto": "Automatique"
+        }
       }
     },
     "number": {
@@ -343,31 +490,142 @@
         "name": "Seuil de COV"
       },
       "filter_interval": {
-        "name": "Intervalle de remplacement des filtres"
+        "name": "Intervalle des filtres"
       },
       "boost_off_delay": {
-        "name": "Boost : temporisation d'arrêt"
+        "name": "Boost délai d'arrêt"
       },
       "boost_on_delay": {
-        "name": "Boost : temporisation de démarrage"
+        "name": "Boost délai de marche"
       },
       "boost_supply_speed": {
-        "name": "Boost : soufflage"
+        "name": "Boost soufflage"
       },
       "boost_extract_speed": {
-        "name": "Boost : extraction"
+        "name": "Boost extraction"
       },
       "supply_speed": {
-        "name": "Vitesse {speed} : soufflage"
+        "name": "Vitesse {speed} soufflage"
       },
       "extract_speed": {
-        "name": "Vitesse {speed} : extraction"
+        "name": "Vitesse {speed} extraction"
       },
       "supply_speed_standby": {
-        "name": "Veille : soufflage"
+        "name": "Veille soufflage"
       },
       "extract_speed_standby": {
-        "name": "Veille : extraction"
+        "name": "Veille extraction"
+      },
+      "fireplace_supply_speed": {
+        "name": "Cheminée soufflage"
+      },
+      "fireplace_extract_speed": {
+        "name": "Cheminée extraction"
+      },
+      "winter_summer_temperature": {
+        "name": "Température de bascule hiver/été"
+      },
+      "bypass_manual_position": {
+        "name": "Position manuelle du bypass"
+      },
+      "min_supply_temperature": {
+        "name": "Température minimale de soufflage"
+      },
+      "heater_blowing_speed": {
+        "name": "Vitesse de post-ventilation du chauffage"
+      },
+      "heater_blowdown_time": {
+        "name": "Durée de post-ventilation du chauffage"
+      },
+      "heater_manual_power": {
+        "name": "Puissance manuelle du chauffage"
+      },
+      "preheater_manual_power": {
+        "name": "Puissance manuelle du préchauffage"
+      },
+      "cooler_manual_power": {
+        "name": "Puissance manuelle du refroidissement"
+      },
+      "cooler_min_off_time": {
+        "name": "Refroidissement : arrêt minimal"
+      },
+      "cooler_min_on_time": {
+        "name": "Refroidissement : marche minimale"
+      },
+      "cooler_hysteresis": {
+        "name": "Refroidissement : hystérésis"
+      },
+      "damper_opening_time": {
+        "name": "Temps d'ouverture des registres"
+      },
+      "co2_sensor_range": {
+        "name": "Étendue de la sonde de CO₂"
+      },
+      "pm25_sensor_range": {
+        "name": "Étendue de la sonde de PM2.5"
+      },
+      "water_valve_min_position": {
+        "name": "Ouverture minimale de la vanne d'eau"
+      },
+      "water_start_timeout": {
+        "name": "Délai de montée en température de l'eau"
+      },
+      "water_min_start_temperature": {
+        "name": "Retour d'eau au démarrage par +10 °C dehors"
+      },
+      "water_max_start_temperature": {
+        "name": "Retour d'eau au démarrage par −30 °C dehors"
+      },
+      "water_min_alarm_temperature": {
+        "name": "Seuil d'alarme du retour d'eau par +10 °C dehors"
+      },
+      "water_max_alarm_temperature": {
+        "name": "Seuil d'alarme du retour d'eau par −30 °C dehors"
+      },
+      "correction_outdoor": {
+        "name": "Correction de la sonde d'air neuf"
+      },
+      "correction_supply": {
+        "name": "Correction de la sonde d'air soufflé"
+      },
+      "correction_extract": {
+        "name": "Correction de la sonde d'air extrait"
+      },
+      "correction_exhaust": {
+        "name": "Correction de la sonde d'air rejeté"
+      },
+      "correction_water": {
+        "name": "Correction de la sonde de retour d'eau"
+      },
+      "correction_panel": {
+        "name": "Correction de la sonde du boîtier de commande"
+      },
+      "pid_humidity": {
+        "name": "Régulateur d'humidité : {coefficient}"
+      },
+      "pid_co2": {
+        "name": "Régulateur de CO₂ : {coefficient}"
+      },
+      "pid_pm25": {
+        "name": "Régulateur de PM2.5 : {coefficient}"
+      },
+      "pid_voc": {
+        "name": "Régulateur de COV : {coefficient}"
+      },
+      "pid_preheater": {
+        "name": "Régulateur du préchauffage : {coefficient}"
+      },
+      "pid_heater": {
+        "name": "Régulateur du chauffage : {coefficient}"
+      },
+      "pid_bypass": {
+        "name": "Régulateur du bypass : {coefficient}"
+      },
+      "pid_cooler": {
+        "name": "Régulateur du refroidissement : {coefficient}"
+      },
+      "pid_water": {
+        "name": "Régulateur du retour d'eau : {coefficient}"
       }
     }
   }

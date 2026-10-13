@@ -7,17 +7,30 @@ import logging
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 
+from .alarms import ALARM, WARNING, ActiveCode, describe
 from .const import (
     ALARM_CODE_COUNT,
     CL_POWER,
     COIL_COUNT,
     DI_ALARM_FIRST,
+    DI_STATUS_COOLER,
+    DI_STATUS_HEATER,
     DISCRETE_COUNT,
     HOLDING_COUNT,
     HR_MAX_SPEED_MODE,
     INPUT_COUNT,
+    IR_ALARM,
+    IR_BYPASS_STATE,
     IR_DEVICE_TYPE,
     IR_FIRMWARE,
+    IR_PREHEATER_OUTPUT,
+    IR_TEMP_EXTRACT,
+    IR_TEMP_OUTDOOR,
+    IR_TEMP_SUPPLY,
+    IR_TIMER_HOURS,
+    IR_TIMER_MIN_SEC,
+    IR_WORK_DAYS,
+    IR_WORK_HOURS_MIN,
     TEMP_NO_SENSOR,
     TEMP_SHORT_CIRCUIT,
 )
@@ -30,6 +43,8 @@ from .modbus import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Below this indoor/outdoor difference the efficiency figure is only noise.
+_MIN_EFFICIENCY_DELTA = 5.0
 # Time the controller gets to apply a write before the state is read back.
 _SETTLE_DELAY = 0.3
 # The controller accepts a single TCP client; right after a disconnection it
@@ -114,6 +129,50 @@ class A21Data:
             for code in range(ALARM_CODE_COUNT)
             if self.discrete[DI_ALARM_FIRST + code]
         ]
+
+    @property
+    def efficiency(self) -> int | None:
+        """Return the supply-side heat recovery efficiency in percent.
+
+        (supply - outdoor) / (extract - outdoor). Only meaningful while the
+        exchanger alone changes the supply temperature, so nothing is
+        reported when a heater or cooler runs or when the bypass is open.
+        """
+        outdoor = self.temperature(IR_TEMP_OUTDOOR)
+        supply = self.temperature(IR_TEMP_SUPPLY)
+        extract = self.temperature(IR_TEMP_EXTRACT)
+        if outdoor is None or supply is None or extract is None or not self.is_on:
+            return None
+        if self.discrete[DI_STATUS_HEATER] or self.discrete[DI_STATUS_COOLER]:
+            return None
+        if self.inputs[IR_BYPASS_STATE] or self.inputs[IR_PREHEATER_OUTPUT]:
+            return None
+        delta = extract - outdoor
+        if abs(delta) < _MIN_EFFICIENCY_DELTA:
+            return None
+        return round(min(max((supply - outdoor) / delta, 0.0), 1.0) * 100)
+
+    @property
+    def timer_remaining(self) -> int | None:
+        """Return the seconds left on the main timer."""
+        min_sec, hours = self.inputs[IR_TIMER_MIN_SEC], self.inputs[IR_TIMER_HOURS]
+        if min_sec is None or hours is None:
+            return None
+        return (hours & 0xFF) * 3600 + (min_sec >> 8) * 60 + (min_sec & 0xFF)
+
+    @property
+    def operating_hours(self) -> int | None:
+        """Return the motor run time in hours."""
+        hours_min, days = self.inputs[IR_WORK_HOURS_MIN], self.inputs[IR_WORK_DAYS]
+        if hours_min is None or days is None:
+            return None
+        return days * 24 + (hours_min >> 8)
+
+    def active_codes(self, language: str | None) -> list[ActiveCode]:
+        """Return the active alarms and warnings, described in a language."""
+        # IR_ALARM: 1 when at least one alarm is active, 2 for warnings only.
+        fallback = ALARM if self.inputs[IR_ALARM] == 1 else WARNING
+        return [describe(code, language, fallback) for code in self.alarm_codes]
 
     @property
     def firmware(self) -> str | None:

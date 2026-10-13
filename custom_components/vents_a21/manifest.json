@@ -3,11 +3,11 @@
   "name": "ECONOPRIME Connect (VENTS A21)",
   "codeowners": ["@floecono"],
   "config_flow": true,
-  "dependencies": ["frontend", "http"],
+  "dependencies": ["frontend", "http", "websocket_api"],
   "documentation": "https://github.com/floecono/ha-vents-A21",
   "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/floecono/ha-vents-A21/issues",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.2.0"
 }

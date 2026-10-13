@@ -18,12 +18,14 @@ async def test_card_is_served(
 ) -> None:
     """The card is loaded by every dashboard without any manual resource."""
     urls = [url for url in hass.data[DATA_EXTRA_MODULE_URL].urls if "vents_a21" in url]
-    assert urls == ["/vents_a21/vents-a21-card.js?v=0.1.0"]
+    assert urls == ["/vents_a21/vents-a21-card.js?v=0.2.0"]
 
     client = await hass_client()
     response = await client.get(urls[0])
     assert response.status == 200
-    assert "vents-a21-card" in await response.text()
+    card = await response.text()
+    assert '"vents-a21-card"' in card
+    assert '"vents-a21-details-card"' in card
 
 
 async def test_diagnostics(hass: HomeAssistant, entry: MockConfigEntry) -> None:

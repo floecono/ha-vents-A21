@@ -95,6 +95,7 @@ def default_holdings() -> list[int]:
     hr[74] = 2  # bypass auto
     hr[75] = 100
     hr[103] = 2
+    hr[110] = 0  # the bypass diverts the outdoor air
     hr[124] = (ord("1") << 8) | ord("1")
     hr[125] = (ord("1") << 8) | ord("1")
     return hr
