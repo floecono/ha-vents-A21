@@ -65,10 +65,12 @@
       "init": {
         "title": "Options",
         "data": {
-          "scan_interval": "Intervalle de lecture"
+          "scan_interval": "Intervalle de lecture",
+          "manual_bypass": "Bypass piloté par Home Assistant"
         },
         "data_description": {
-          "scan_interval": "Temps entre deux lectures de la machine (15 s par défaut)."
+          "scan_interval": "Temps entre deux lectures de la machine (15 s par défaut).",
+          "manual_bypass": "Cochez si vous pilotez le bypass vous-même (tuile, automatisations). L'avertissement « Bypass en mode manuel » de la machine n'est alors plus signalé, ni dans les tuiles ni dans les capteurs d'alarme."
         }
       }
     }

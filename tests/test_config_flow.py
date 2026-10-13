@@ -136,5 +136,39 @@ async def test_options(
     )
     await hass.async_block_till_done()
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.options == {CONF_SCAN_INTERVAL: 30}
+    assert entry.options == {CONF_SCAN_INTERVAL: 30, "manual_bypass": False}
     assert entry.runtime_data.update_interval.total_seconds() == 30
+
+
+async def test_manual_bypass_option(
+    hass: HomeAssistant, simulator: A21Simulator, entry: MockConfigEntry
+) -> None:
+    """The "bypass in manual mode" warning is silenced when asked, nothing else."""
+    simulator.set_discrete(19 + 38, True)  # bypass in manual mode
+    simulator.set_discrete(19 + 37, True)  # cooler in manual mode
+    simulator.set_input(38, 2)  # the unit reports "warnings only"
+    await entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    alarms = hass.states.get("sensor.zephyr_240_s_connect_active_alarms")
+    assert alarms.state == "2"
+    assert hass.states.get("sensor.zephyr_240_s_connect_unit_status").state == "warning"
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_SCAN_INTERVAL: 15, "manual_bypass": True}
+    )
+    await hass.async_block_till_done()
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    # Applied at once, without waiting for the next poll.
+    alarms = hass.states.get("sensor.zephyr_240_s_connect_active_alarms")
+    assert alarms.state == "1"
+    assert alarms.attributes["codes"] == [37]
+    assert hass.states.get("sensor.zephyr_240_s_connect_unit_status").state == "warning"
+    assert hass.states.get("binary_sensor.zephyr_240_s_connect_alarm").state == "on"
+
+    simulator.set_discrete(19 + 37, False)  # only the ignored warning is left
+    await entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.zephyr_240_s_connect_active_alarms").state == "0"
+    assert hass.states.get("sensor.zephyr_240_s_connect_unit_status").state == "ok"
+    assert hass.states.get("binary_sensor.zephyr_240_s_connect_alarm").state == "off"

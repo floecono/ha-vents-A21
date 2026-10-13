@@ -15,6 +15,7 @@ from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import section
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -27,6 +28,7 @@ from homeassistant.helpers.selector import (
 from .api import A21Api
 from .const import (
     CONF_ADVANCED,
+    CONF_MANUAL_BYPASS,
     CONF_MODEL,
     CONF_UNIT_ID,
     DEFAULT_PORT,
@@ -166,10 +168,13 @@ class A21OptionsFlow(OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Set the polling interval."""
+        """Set the polling interval and the alarm rules."""
         if user_input is not None:
             return self.async_create_entry(
-                data={CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL])}
+                data={
+                    CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL]),
+                    CONF_MANUAL_BYPASS: bool(user_input.get(CONF_MANUAL_BYPASS)),
+                }
             )
         return self.async_show_form(
             step_id="init",
@@ -187,7 +192,11 @@ class A21OptionsFlow(OptionsFlow):
                             unit_of_measurement="s",
                             mode=NumberSelectorMode.BOX,
                         )
-                    )
+                    ),
+                    vol.Required(
+                        CONF_MANUAL_BYPASS,
+                        default=bool(self.config_entry.options.get(CONF_MANUAL_BYPASS)),
+                    ): BooleanSelector(),
                 }
             ),
         )

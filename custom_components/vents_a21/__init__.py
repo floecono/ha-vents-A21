@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import timedelta
 from pathlib import Path
 
@@ -15,7 +16,7 @@ from homeassistant.loader import async_get_integration
 
 from . import websocket
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
-from .coordinator import A21ConfigEntry, A21Coordinator
+from .coordinator import A21ConfigEntry, A21Coordinator, ignored_codes
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
@@ -67,7 +68,16 @@ async def async_unload_entry(hass: HomeAssistant, entry: A21ConfigEntry) -> bool
 
 
 async def _async_entry_updated(hass: HomeAssistant, entry: A21ConfigEntry) -> None:
-    """Apply a new polling interval without reloading the entry."""
-    entry.runtime_data.update_interval = timedelta(
+    """Apply new options without reloading the entry."""
+    coordinator = entry.runtime_data
+    coordinator.update_interval = timedelta(
         seconds=entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
     )
+    codes = ignored_codes(entry)
+    if codes != coordinator.api.ignored_codes:
+        coordinator.api.ignored_codes = codes
+        # Re-read the snapshot with the new rule so every entity follows.
+        if coordinator.data is not None:
+            coordinator.async_set_updated_data(
+                replace(coordinator.data, ignored_codes=codes)
+            )

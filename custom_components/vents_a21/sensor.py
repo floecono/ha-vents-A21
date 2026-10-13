@@ -384,7 +384,7 @@ SENSORS: tuple[A21SensorDescription, ...] = (
         key="alarm_state",
         device_class=SensorDeviceClass.ENUM,
         options=ALARM_STATES,
-        value_fn=_enum(ALARM_STATES, IR_ALARM),
+        value_fn=lambda data: data.alarm_level,
         exists_fn=lambda data: data.ir(IR_ALARM) is not None,
     ),
     A21SensorDescription(
