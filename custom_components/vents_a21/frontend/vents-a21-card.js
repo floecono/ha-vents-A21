@@ -111,7 +111,7 @@ const TEXT = {
     bypassOption: "Afficher la commande manuelle du bypass (automatique, ouvert, fermé)",
     cardName: "VMC double flux ECONOPRIME / VENTS A21",
     cardDescription: "Vue de la machine : températures des quatre flux d'air, rendement, bypass, vitesses, filtres.",
-    detailsName: "VMC double flux : toutes les mesures",
+    detailsName: "VMC double flux ECONOPRIME / VENTS A21 : toutes les mesures",
     detailsDescription: "Vue technique : ventilateurs (puissance, régime, débit, pression), toutes les sondes, échangeur, batteries, entretien, alarmes en clair.",
   },
   en: {
@@ -182,7 +182,7 @@ const TEXT = {
     bypassOption: "Show the manual bypass control (automatic, open, closed)",
     cardName: "ECONOPRIME / VENTS A21 ventilation unit",
     cardDescription: "View of the unit: temperature of the four air streams, efficiency, bypass, speeds, filters.",
-    detailsName: "Ventilation unit: every measurement",
+    detailsName: "ECONOPRIME / VENTS A21 ventilation unit: every measurement",
     detailsDescription: "Technical view: fans (power, speed, airflow, pressure), every probe, exchanger, heaters, maintenance, alarms in plain words.",
   },
 };
