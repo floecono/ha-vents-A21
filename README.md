@@ -51,7 +51,7 @@ Plus de 100 entités, deux tuiles, et tout passe par Modbus TCP en local, sans c
 
 **Piloter**, depuis la tuile, la page de l'appareil ou vos automatisations
 
-- Marche / arrêt et mode : ventilation, chauffage, refroidissement, automatique.
+- Marche / arrêt et mode : **Ventilation** (pas de régulation de température), **Chaud** (la machine vise la consigne en récupérant un maximum de chaleur, bypass fermé, avec la batterie d'appoint si elle existe), **Froid** (elle vise la consigne en rafraîchissant, bypass ouvert quand l'air extérieur est plus frais, avec le refroidisseur s'il existe), **Automatique** (elle choisit).
 - Vitesses 1, 2, 3 (jusqu'à 5 selon la machine) et vitesse manuelle en %.
 - Consigne de température de 15 à 30 °C.
 - Minuterie : lancement, vitesse, durée, température.

@@ -114,7 +114,7 @@
             "state": {
               "off": "Off",
               "fan": "Ventilation",
-              "heating": "Heating",
+              "heating": "Booster heating",
               "cooling": "Cooling",
               "idle": "Idle"
             }
@@ -123,8 +123,8 @@
             "state": {
               "off": "Off",
               "fan_only": "Ventilation",
-              "heat": "Heating",
-              "cool": "Cooling",
+              "heat": "Warm",
+              "cool": "Cool",
               "auto": "Automatic"
             }
           }
@@ -132,8 +132,8 @@
         "state": {
           "off": "Off",
           "fan_only": "Ventilation",
-          "heat": "Heating",
-          "cool": "Cooling",
+          "heat": "Warm",
+          "cool": "Cool",
           "auto": "Automatic"
         }
       }
