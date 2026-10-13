@@ -316,23 +316,19 @@ function roundedPath(points, radius = STREAM_RADIUS) {
 
 // The branches start and end on the trunks, one corner radius before the
 // junction, so that their rounded corner leaves the trunk smoothly; the
-// trunks are drawn over that overlap. The detour leaves the trunk before
-// the exchanger branch does, heading forward and down, rather than turning
-// back from the same point.
+// trunks are drawn over that overlap.
 const R = STREAM_RADIUS;
 const STREAMS = {
   fresh: {
     in: "M12 62 H148",
-    inShort: "M12 62 H120", // when nothing crosses the exchanger
     through: roundedPath([[148 - R, 62], [148, 62], [250, 138], [250 + R, 138]]),
-    around: roundedPath([[120 - R, 62], [120, 62], [134, 100], [200, 164], [250, 138], [250 + R, 138]]),
+    around: roundedPath([[148 - R, 62], [148, 62], [134, 100], [200, 164], [250, 138], [250 + R, 138]]),
     out: "M250 138 H380",
   },
   stale: {
     in: "M388 62 H252",
-    inShort: "M388 62 H280",
     through: roundedPath([[252 + R, 62], [252, 62], [150, 138], [150 - R, 138]]),
-    around: roundedPath([[280 + R, 62], [280, 62], [266, 100], [200, 164], [150, 138], [150 - R, 138]]),
+    around: roundedPath([[252 + R, 62], [252, 62], [266, 100], [200, 164], [150, 138], [150 - R, 138]]),
     out: "M150 138 H20",
   },
 };
@@ -825,10 +821,6 @@ class VentsA21Card extends HTMLElement {
           node.style.strokeWidth = `${((kind === "stream" ? STREAM_WIDTH : MOTION_WIDTH) * widths[piece]).toFixed(2)}px`;
         }
       }
-      // With the whole stream around the exchanger, the trunk stops at the
-      // fork instead of running on as a stub.
-      const trunk = STREAMS[name][widths.through >= 0.05 ? "in" : "inShort"];
-      for (const node of group.querySelectorAll('[data-piece="in"]')) node.setAttribute("d", trunk);
       const gap = group.querySelector(".gap");
       gap.toggleAttribute("hidden", widths.around < 0.05);
       gap.style.strokeWidth = `${(STREAM_WIDTH * widths.around + GAP_EXTRA).toFixed(2)}px`;
