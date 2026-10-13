@@ -153,10 +153,12 @@ async def test_engineering_settings(
     frost = f"select.{PREFIX}_exchanger_frost_protection"
     clock = f"button.{PREFIX}_set_the_clock"
     registry = er.async_get(hass)
-    for entity_id in (correction, regulator, co2_probe, frost, clock):
+    for entity_id in (correction, regulator, co2_probe, frost):
         assert registry.async_get(entity_id).disabled_by is not None, entity_id
+    # The clock button is enabled by default since its layout was confirmed.
+    assert registry.async_get(clock).disabled_by is None
 
-    await enable(hass, entry, correction, regulator, co2_probe, frost, clock)
+    await enable(hass, entry, correction, regulator, co2_probe, frost)
 
     assert hass.states.get(correction).state == "-1.5"
     await call(hass, "number", "set_value", entity_id=correction, value=-2.3)

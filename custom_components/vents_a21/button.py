@@ -55,15 +55,13 @@ BUTTONS: tuple[A21ButtonDescription, ...] = (
         writes_fn=lambda: [CoilWrite(CL_RESET_ALARM, True)],
         needs_coil=CL_RESET_ALARM,
     ),
-    # The byte layout of the clock registers has not been checked on a real
-    # unit yet, and a wrong clock shifts the weekly schedule: created
-    # disabled until it is confirmed.
+    # Byte layout of the clock registers confirmed on a DF 350 Connect
+    # (firmware of 2022-07-07): the written time read back correctly.
     A21ButtonDescription(
         key="set_clock",
         writes_fn=_clock_writes,
         needs_register=HR_RTC_MONTH_YEAR,
         entity_category=EntityCategory.CONFIG,
-        entity_registry_enabled_default=False,
     ),
 )
 
