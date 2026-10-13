@@ -51,7 +51,7 @@ Plus de 100 entités, deux tuiles, et tout passe par Modbus TCP en local, sans c
 
 **Piloter**, depuis la tuile, la page de l'appareil ou vos automatisations
 
-- Marche / arrêt et mode : **Ventilation** (pas de régulation de température), **Chaud** (la machine vise la consigne en récupérant un maximum de chaleur, bypass fermé, avec la batterie d'appoint si elle existe), **Froid** (elle vise la consigne en rafraîchissant, bypass ouvert quand l'air extérieur est plus frais, avec le refroidisseur s'il existe), **Automatique** (elle choisit).
+- Marche / arrêt et mode : **Ventilation** (récupération de chaleur seule, pas de régulation de température), **Chaud** (la machine vise la consigne par le haut : bypass et batterie d'appoint si elle existe), **Froid** (elle vise la consigne par le bas : bypass et refroidisseur s'il existe), **Automatique** (elle choisit). La logique du bypass est détaillée plus bas.
 - Vitesses 1, 2, 3 (jusqu'à 5 selon la machine) et vitesse manuelle en %.
 - Consigne de température de 15 à 30 °C.
 - Minuterie : lancement, vitesse, durée, température.
@@ -189,7 +189,12 @@ Deux choses ne sont volontairement pas proposées : la remise aux réglages d'us
 
 ### Piloter le bypass soi-même
 
-En mode **Automatique**, la machine ouvre et ferme le bypass selon ses propres règles (température de bascule hiver/été, consigne). Si vous préférez décider vous-même, par exemple pour un rafraîchissement nocturne (free cooling) à vos conditions, l'entité **Mode du bypass** de la machine accepte trois valeurs : **Automatique**, **Ouvert** (l'air neuf contourne l'échangeur) et **Fermé** (récupération de chaleur). Elle se pilote depuis la page de l'appareil, depuis la tuile si vous activez sa commande manuelle, ou par automatisation.
+En mode **Automatique**, la machine ouvre et ferme le bypass selon les règles de la notice de l'application DF Connect (annexe « Algorithme de régulation ») :
+
+- **Elle ne pilote le bypass que si la sonde de régulation est l'air extrait ou le boîtier de commande.** Avec la sonde réglée sur « air soufflé », aucune régulation de température par le bypass n'a lieu, et il garde sa position.
+- **Mode Froid (ou Automatique en été)** : le bypass s'ouvre quand la pièce dépasse la consigne d'au moins 1 °C, que l'air extérieur est au moins 2 °C plus frais que la pièce, qu'il fait au moins 16 °C dehors et que le préchauffage est désactivé. Il se referme quand l'air extérieur n'est plus plus frais que la pièce, sous 15 °C dehors, ou quand l'extérieur passe sous la consigne.
+- **Mode Chaud (ou Automatique en hiver)** : le bypass s'ouvre quand la pièce est sous la consigne d'au moins 1 °C et que l'air extérieur est au moins 2 °C plus chaud que la pièce (chaleur gratuite). Il se referme dès que l'extérieur n'est plus plus chaud que la pièce, ou quand l'extérieur dépasse la consigne.
+- Le mouvement est proportionnel, pas tout ou rien. Si vous préférez décider vous-même, par exemple pour un rafraîchissement nocturne (free cooling) à vos conditions, l'entité **Mode du bypass** de la machine accepte trois valeurs : **Automatique**, **Ouvert** (l'air neuf contourne l'échangeur) et **Fermé** (récupération de chaleur). Elle se pilote depuis la page de l'appareil, depuis la tuile si vous activez sa commande manuelle, ou par automatisation.
 
 Exemple : ouvrir le bypass la nuit en été quand l'air extérieur est plus frais que l'intérieur, et rendre la main à la machine le matin.
 
