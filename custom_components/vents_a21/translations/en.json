@@ -70,7 +70,7 @@
         },
         "data_description": {
           "scan_interval": "Time between two readings of the unit (15 s by default).",
-          "manual_bypass": "Tick if you drive the bypass yourself (card, automations). The unit's “Bypass in manual mode” warning is then no longer reported, neither on the cards nor by the alarm sensors."
+          "manual_bypass": "Tick if you drive the bypass yourself (card, automations). The unit's “Bypass in manual mode” warning is then no longer reported, neither on the cards nor by the alarm sensors. Mind that without a preheater, the bypass is what protects the exchanger from frost: switch back to automatic in winter."
         }
       }
     }

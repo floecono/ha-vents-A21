@@ -173,7 +173,10 @@ automation:
 
 Tant que le bypass n'est pas en **Automatique**, la machine émet l'avertissement « Bypass en mode manuel » (code 38). Si c'est votre choix, dites-le à l'intégration : **Paramètres**, **Appareils et services**, l'intégration, **Configurer**, puis cochez **Bypass piloté par Home Assistant**. Cet avertissement disparaît alors des tuiles, du capteur « Alarmes actives », du capteur d'état et du capteur binaire « Alarme » ; les autres alarmes et avertissements restent signalés normalement. Sans cette option, seule la tuile dont la commande du bypass est activée le passe sous silence.
 
-Deux précautions : en mode **Ouvert**, c'est vous qui décidez, la machine ne refermera pas le bypass si l'air extérieur devient froid ; pensez donc toujours à une automatisation de retour. Et sur les machines à préchauffage, laissez la protection antigel faire son travail en hiver en restant en **Automatique**.
+Deux précautions :
+
+- En mode **Ouvert**, c'est vous qui décidez : la machine ne refermera pas le bypass si l'air extérieur devient froid. Prévoyez toujours une automatisation de retour.
+- **Antigel** : sans résistance de préchauffage, c'est la gestion du bypass qui protège l'échangeur du gel. Tant que le bypass est en manuel, cette protection ne joue plus. **En hiver, repassez en Automatique.** La tuile le rappelle dès que l'air extérieur descend sous 5 °C, même si vous avez fait taire l'avertissement « Bypass en mode manuel », et la tuile détaillée l'indique en permanence sous « Commande ».
 
 ## Alarmes et avertissements
 
@@ -231,7 +234,7 @@ C'est la méthode des gestions techniques de bâtiment : on ne sécurise pas le 
 - **Sortie Internet de la machine** : bloquez-la si vous n'utilisez pas le pilotage à distance de l'application mobile.
 - **Passerelle RS485 vers Ethernet** : si la machine est raccordée par une passerelle Modbus, celle-ci n'authentifie pas davantage ses clients. Placez-la dans le même réseau technique et changez son mot de passe d'administration.
 
-## État de la version 0.2.4
+## État de la version 0.2.5
 
 L'intégration est écrite d'après la table Modbus officielle de l'automate A21 (VENTS, document V55-8-1EN-02) et la notice de l'application DF Connect pour la signification des codes d'alarme. Elle est vérifiée contre un simulateur de la machine, par une suite de tests automatiques et par un essai dans une instance Home Assistant. Elle n'a pas encore été validée sur une machine réelle : vos retours sont les bienvenus, [ouvrez un ticket](https://github.com/floecono/ha-vents-A21/issues) en joignant les diagnostics.
 

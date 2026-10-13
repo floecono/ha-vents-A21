@@ -33,6 +33,9 @@ const FILTER_CODES = new Set([24, 29, 40]);
 // Warnings "bypass / rotary exchanger in manual mode": expected, and so not
 // shown, when the owner drives the bypass from this card.
 const MANUAL_BYPASS_CODES = new Set([38, 39]);
+// Outdoor temperature (°C) under which a hand-driven bypass on a unit whose
+// frost protection relies on the bypass gets a reminder.
+const FROST_WARNING_BELOW = 5;
 
 // Days before the filter deadline from which the reminder is shown, unless
 // the card options say otherwise (0: only once the deadline is reached).
@@ -59,6 +62,8 @@ const TEXT = {
     recoveryCooling: "active, rendement non mesurable (refroidissement)",
     recoveryPreheating: "active, rendement non mesurable (préchauffage antigel)",
     bypassControl: "Commande du bypass",
+    frostByBypass:
+      "Bypass en manuel : sans préchauffage, c'est le bypass qui protège l'échangeur du gel. En hiver, repassez en automatique.",
     bypassAuto: "Auto",
     bypassOpened: "Ouvert",
     bypassShut: "Fermé",
@@ -128,6 +133,8 @@ const TEXT = {
     recoveryCooling: "active, efficiency not measurable (cooling)",
     recoveryPreheating: "active, efficiency not measurable (preheating)",
     bypassControl: "Bypass control",
+    frostByBypass:
+      "Bypass in manual mode: without a preheater, the bypass is what protects the exchanger from frost. Switch back to automatic in winter.",
     bypassAuto: "Auto",
     bypassOpened: "Open",
     bypassShut: "Closed",
@@ -209,7 +216,7 @@ const STYLE = `
   .notice span { flex: 1; min-width: 12ch; }
   .notice a { color: var(--primary-text-color); font-weight: 500; text-underline-offset: 3px; }
   .notice.alarm { --a21-tone: var(--error-color, #db4437); }
-  .notice.warning, .notice.filter { --a21-tone: var(--warning-color, #ffa600); }
+  .notice.warning, .notice.filter, .notice.frost { --a21-tone: var(--warning-color, #ffa600); }
 
   .unit { display: block; width: 100%; height: auto; margin: 14px 0 6px; }
   .unit text { fill: var(--primary-text-color); font-family: inherit; }
@@ -298,6 +305,7 @@ const TEMPLATE = `
 
       <div class="notice alarm" hidden><span></span></div>
       <div class="notice warning" hidden><span></span></div>
+      <div class="notice frost" hidden><span></span></div>
       <div class="notice filter" hidden><span></span><a target="_blank" rel="noopener"></a></div>
 
       <svg class="unit" viewBox="0 0 400 200" role="img">
@@ -484,6 +492,7 @@ class VentsA21Card extends HTMLElement {
       power: root.querySelector(".power"),
       alarm: root.querySelector(".notice.alarm"),
       warning: root.querySelector(".notice.warning"),
+      frost: root.querySelector(".notice.frost"),
       streams: root.querySelector(".streams"),
       filter: root.querySelector(".notice.filter"),
       unit: root.querySelector(".unit"),
@@ -568,6 +577,7 @@ class VentsA21Card extends HTMLElement {
             a.status,
             a.temperature_difference,
             a.options,
+            a.frost_protection,
           ]
         );
       }),
@@ -639,6 +649,21 @@ class VentsA21Card extends HTMLElement {
         }),
       );
     }
+
+    // Frost: when the exchanger is protected by the bypass (no preheater), a
+    // bypass driven by hand leaves it unprotected. Said whatever the options,
+    // once the outdoor air gets cold.
+    const bypassStateObj = state("bypass");
+    const bypassModeObj = state("bypassMode");
+    const outdoorNow = number(state("outdoor"));
+    const frostRisk =
+      on &&
+      bypassStateObj?.attributes.frost_protection === "bypass" &&
+      bypassModeObj !== undefined &&
+      ["open", "closed"].includes(bypassModeObj.state) &&
+      (outdoorNow === null || outdoorNow < FROST_WARNING_BELOW);
+    this._el.frost.hidden = !frostRisk;
+    if (frostRisk) this._el.frost.querySelector("span").textContent = text.frostByBypass;
 
     const days = number(state("filterDays"));
     // Due when the unit says so, or when its countdown has run out.

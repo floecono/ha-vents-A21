@@ -227,6 +227,10 @@ _T: dict[str, dict[str, str]] = {
         "x_mode_0": "Forcé fermé",
         "x_mode_1": "Forcé ouvert",
         "x_mode_2": "Automatique",
+        "x_mode_frost": (
+            "Sans préchauffage, c'est le bypass qui protège l'échangeur du gel :"
+            " en hiver, repassez en automatique."
+        ),
         "x_side": "Air dévié",
         "x_side_0": "Air neuf",
         "x_side_1": "Air extrait",
@@ -386,6 +390,10 @@ _T: dict[str, dict[str, str]] = {
         "x_mode_0": "Forced closed",
         "x_mode_1": "Forced open",
         "x_mode_2": "Automatic",
+        "x_mode_frost": (
+            "Without a preheater, the bypass is what protects the exchanger from"
+            " frost: switch back to automatic in winter."
+        ),
         "x_side": "Bypassed air",
         "x_side_0": "Outdoor air",
         "x_side_1": "Extract air",
@@ -782,7 +790,15 @@ def _exchanger(b: _Builder) -> None:
             else:
                 state = text[words[2]].format(partial)
             rows.append(b.row(label, state, level="on" if position > 0 else None))
-        rows.append(b.row("x_mode", b.choice("x_mode", data.hr(HR_BYPASS_MODE))))
+        manual = data.hr(HR_BYPASS_MODE) in (0, 1)
+        by_bypass = data.hr(HR_DEFROST_MODE) == 2
+        rows.append(
+            b.row(
+                "x_mode",
+                b.choice("x_mode", data.hr(HR_BYPASS_MODE)),
+                hint=text["x_mode_frost"] if manual and by_bypass else None,
+            )
+        )
         if kind not in ROTARY_TYPES:
             rows.append(b.row("x_side", b.choice("x_side", data.hr(HR_BYPASS_SIDE))))
         signal = data.ir(IR_BYPASS_OUTPUT)

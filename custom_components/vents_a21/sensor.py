@@ -209,6 +209,10 @@ def _alarm_attributes(data: A21Data, language: str) -> dict[str, Any]:
     }
 
 
+# HR_DEFROST_MODE: 0 off, 1 preheater, 2 bypass (or rotor), 3 supply fan stop.
+FROST_PROTECTION = ("off", "preheating", "bypass", "fans")
+
+
 def _bypass_attributes(data: A21Data, language: str) -> dict[str, Any]:
     """Say what the position applies to.
 
@@ -217,9 +221,17 @@ def _bypass_attributes(data: A21Data, language: str) -> dict[str, Any]:
     bypassed_air: which air stream goes around the exchanger.
     """
     rotary = data.hr(HR_BYPASS_TYPE) in ROTARY_TYPES
+    frost = data.hr(HR_DEFROST_MODE)
     return {
         "exchanger": "rotary" if rotary else "bypass",
         "bypassed_air": "extract" if data.hr(HR_BYPASS_SIDE) == 1 else "outdoor",
+        # How the exchanger is protected from frost. With "bypass", driving the
+        # bypass by hand in winter leaves the exchanger unprotected.
+        "frost_protection": (
+            FROST_PROTECTION[frost]
+            if frost is not None and frost < len(FROST_PROTECTION)
+            else None
+        ),
     }
 
 
