@@ -31,8 +31,10 @@ const FILTERS = {
 // Alarm codes that only say "change the filters": the filter notice covers them.
 const FILTER_CODES = new Set([24, 29, 40]);
 
-// Days before the filter deadline from which ordering is suggested.
+// Days before the filter deadline from which the reminder is shown, unless
+// the card options say otherwise (0: only once the deadline is reached).
 const FILTER_SOON_DAYS = 21;
+const FILTER_SOON_MAX = 120;
 
 const TEXT = {
   fr: {
@@ -74,7 +76,7 @@ const TEXT = {
     filters: "Filtres",
     days: (n) => `${n} j`,
     filtersDue: "Filtres à remplacer",
-    filtersSoon: (n) => `Filtres à remplacer dans ${n} jours`,
+    filtersSoon: (n) => `Filtres à remplacer dans ${n} jour${n > 1 ? "s" : ""}`,
     orderFilters: "Commander les filtres",
     alarm: "Alarme",
     warning: "Avertissement",
@@ -83,6 +85,7 @@ const TEXT = {
     pickDevice: "Machine",
     name: "Nom affiché (facultatif)",
     filterLink: "Afficher le lien pour commander les filtres quand ils sont à remplacer",
+    filterDays: "Rappel des filtres : nombre de jours avant l'échéance (0 : à l'échéance seulement)",
     cardName: "VMC double flux ECONOPRIME / VENTS A21",
     cardDescription: "Vue de la machine : températures des quatre flux d'air, rendement, bypass, vitesses, filtres.",
     detailsName: "VMC double flux : toutes les mesures",
@@ -127,7 +130,7 @@ const TEXT = {
     filters: "Filters",
     days: (n) => `${n} d`,
     filtersDue: "Filters need replacing",
-    filtersSoon: (n) => `Filters need replacing in ${n} days`,
+    filtersSoon: (n) => `Filters need replacing in ${n} day${n > 1 ? "s" : ""}`,
     orderFilters: "Order filters",
     alarm: "Alarm",
     warning: "Warning",
@@ -136,6 +139,7 @@ const TEXT = {
     pickDevice: "Unit",
     name: "Displayed name (optional)",
     filterLink: "Show the link to order filters when they need replacing",
+    filterDays: "Filter reminder: days before the deadline (0: only at the deadline)",
     cardName: "ECONOPRIME / VENTS A21 ventilation unit",
     cardDescription: "View of the unit: temperature of the four air streams, efficiency, bypass, speeds, filters.",
     detailsName: "Ventilation unit: every measurement",
@@ -365,7 +369,12 @@ function mix(ratio) {
   return `rgb(${channel(0)}, ${channel(1)}, ${channel(2)})`;
 }
 
-const FORM_LABELS = { device_id: "pickDevice", name: "name", filter_link: "filterLink" };
+const FORM_LABELS = {
+  device_id: "pickDevice",
+  name: "name",
+  filter_link: "filterLink",
+  filter_reminder_days: "filterDays",
+};
 
 /** Options shown by the visual editor of both cards, plus their own extras. */
 function configForm(extra = []) {
@@ -388,7 +397,14 @@ class VentsA21Card extends HTMLElement {
   }
 
   static getConfigForm() {
-    return configForm([{ name: "filter_link", selector: { boolean: {} } }]);
+    return configForm([
+      {
+        name: "filter_reminder_days",
+        default: FILTER_SOON_DAYS,
+        selector: { number: { min: 0, max: FILTER_SOON_MAX, step: 1, mode: "box" } },
+      },
+      { name: "filter_link", selector: { boolean: {} } },
+    ]);
   }
 
   setConfig(config) {
@@ -559,8 +575,14 @@ class VentsA21Card extends HTMLElement {
     }
 
     const days = number(state("filterDays"));
-    const filterDue = is("filterAlert");
-    const filterSoon = !filterDue && days !== null && days <= FILTER_SOON_DAYS;
+    // Due when the unit says so, or when its countdown has run out.
+    const filterDue = is("filterAlert") || (days !== null && days <= 0);
+    const configured = Number(this._config.filter_reminder_days);
+    const soonDays =
+      this._config.filter_reminder_days == null || !Number.isFinite(configured)
+        ? FILTER_SOON_DAYS
+        : Math.min(Math.max(Math.round(configured), 0), FILTER_SOON_MAX);
+    const filterSoon = !filterDue && days !== null && days <= soonDays;
     this._el.filter.hidden = !(filterDue || filterSoon);
     if (filterDue || filterSoon) {
       this._el.filter.querySelector("span").textContent =
