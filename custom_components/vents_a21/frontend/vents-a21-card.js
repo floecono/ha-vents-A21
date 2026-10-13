@@ -315,9 +315,10 @@ function roundedPath(points, radius = STREAM_RADIUS) {
 }
 
 // The exchanger branch dips from the trunk into the middle of an upper
-// slanted face of the exchanger, runs along the block against the other
-// stream (the core is slightly translucent, so this shows through) and
-// leaves by the middle of the opposite lower face; the detour leaves the
+// slanted face of the exchanger, crosses the block in a straight line
+// through its centre, against the other stream (the core is slightly
+// translucent, so this shows through), and leaves by the middle of the
+// opposite lower face, as on the manufacturers' airflow diagrams; the detour leaves the
 // end of the trunk and follows the outline of the core at a constant
 // 14 units (its tip, then its lower faces, then up to the trunk). Both
 // branches share the width of the stream.
@@ -325,13 +326,13 @@ const R = STREAM_RADIUS;
 const STREAMS = {
   fresh: {
     in: "M12 62 H148",
-    through: roundedPath([[148, 62], [159, 78], [182, 96], [218, 96], [241, 122], [250, 138]]),
+    through: roundedPath([[148, 62], [159, 78], [241, 122], [250, 138]]),
     around: roundedPath([[148, 62], [127, 100], [167, 158], [233, 158], [250, 138], [250 + R, 138]]),
     out: "M250 138 H380",
   },
   stale: {
     in: "M388 62 H252",
-    through: roundedPath([[252, 62], [241, 78], [218, 104], [182, 104], [159, 122], [150, 138]]),
+    through: roundedPath([[252, 62], [241, 78], [159, 122], [150, 138]]),
     around: roundedPath([[252, 62], [273, 100], [233, 158], [167, 158], [150, 138], [150 - R, 138]]),
     out: "M150 138 H20",
   },
