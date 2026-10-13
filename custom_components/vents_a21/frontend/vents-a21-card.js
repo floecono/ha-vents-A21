@@ -448,6 +448,22 @@ const FORM_LABELS = {
   bypass_control: "bypassOption",
 };
 
+/**
+ * Language of the Home Assistant interface, for the places where no hass
+ * object is available (card picker, visual editor): the language chosen in
+ * the user's profile (kept by the frontend in local storage), then the
+ * browser's.
+ */
+function uiLanguage() {
+  let chosen = "";
+  try {
+    chosen = JSON.parse(localStorage.getItem("selectedLanguage") || '""') || "";
+  } catch {
+    chosen = "";
+  }
+  return String(chosen || navigator.language || "").startsWith("fr") ? "fr" : "en";
+}
+
 /** Options shown by the visual editor of both cards, plus their own extras. */
 function configForm(extra = []) {
   return {
@@ -456,10 +472,9 @@ function configForm(extra = []) {
       { name: "name", selector: { text: {} } },
       ...extra,
     ],
-    computeLabel: (field, hass) => {
-      const text = TEXT[(hass?.language || "en").startsWith("fr") ? "fr" : "en"];
-      return text[FORM_LABELS[field.name]];
-    },
+    // The editor passes (field, localize), not the hass object: the language
+    // comes from the interface itself (profile setting, then the browser).
+    computeLabel: (field) => TEXT[uiLanguage()][FORM_LABELS[field.name]],
   };
 }
 
@@ -1282,13 +1297,7 @@ Promise.race([
   // chosen in the Home Assistant profile (kept by the frontend in local
   // storage), then the browser's. The other language's name is appended to
   // the description so a search in either language finds the cards.
-  let chosen = "";
-  try {
-    chosen = JSON.parse(localStorage.getItem("selectedLanguage") || '""') || "";
-  } catch {
-    chosen = "";
-  }
-  const lang = String(chosen || navigator.language || "").startsWith("fr") ? "fr" : "en";
+  const lang = uiLanguage();
   const text = TEXT[lang];
   const other = TEXT[lang === "fr" ? "en" : "fr"];
   window.customCards = window.customCards || [];
