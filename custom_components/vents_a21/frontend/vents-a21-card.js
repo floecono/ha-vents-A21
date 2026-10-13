@@ -82,6 +82,7 @@ const TEXT = {
     noDevice: "Aucune machine trouvée. Ajoutez d'abord l'intégration dans Paramètres, Appareils et services.",
     pickDevice: "Machine",
     name: "Nom affiché (facultatif)",
+    filterLink: "Afficher le lien pour commander les filtres quand ils sont à remplacer",
     cardName: "VMC double flux ECONOPRIME / VENTS A21",
     cardDescription: "Vue de la machine : températures des quatre flux d'air, rendement, bypass, vitesses, filtres.",
     detailsName: "VMC double flux : toutes les mesures",
@@ -134,6 +135,7 @@ const TEXT = {
     noDevice: "No unit found. Add the integration first in Settings, Devices & services.",
     pickDevice: "Unit",
     name: "Displayed name (optional)",
+    filterLink: "Show the link to order filters when they need replacing",
     cardName: "ECONOPRIME / VENTS A21 ventilation unit",
     cardDescription: "View of the unit: temperature of the four air streams, efficiency, bypass, speeds, filters.",
     detailsName: "Ventilation unit: every measurement",
@@ -363,22 +365,30 @@ function mix(ratio) {
   return `rgb(${channel(0)}, ${channel(1)}, ${channel(2)})`;
 }
 
+const FORM_LABELS = { device_id: "pickDevice", name: "name", filter_link: "filterLink" };
+
+/** Options shown by the visual editor of both cards, plus their own extras. */
+function configForm(extra = []) {
+  return {
+    schema: [
+      { name: "device_id", required: true, selector: { device: { integration: DOMAIN } } },
+      { name: "name", selector: { text: {} } },
+      ...extra,
+    ],
+    computeLabel: (field, hass) => {
+      const text = TEXT[(hass?.language || "en").startsWith("fr") ? "fr" : "en"];
+      return text[FORM_LABELS[field.name]];
+    },
+  };
+}
+
 class VentsA21Card extends HTMLElement {
   static getStubConfig(hass) {
     return { device_id: devicesOf(hass)[0] || "" };
   }
 
   static getConfigForm() {
-    return {
-      schema: [
-        { name: "device_id", required: true, selector: { device: { integration: DOMAIN } } },
-        { name: "name", selector: { text: {} } },
-      ],
-      computeLabel: (field, hass) => {
-        const text = TEXT[(hass?.language || "en").startsWith("fr") ? "fr" : "en"];
-        return field.name === "device_id" ? text.pickDevice : text.name;
-      },
-    };
+    return configForm([{ name: "filter_link", selector: { boolean: {} } }]);
   }
 
   setConfig(config) {
@@ -555,10 +565,18 @@ class VentsA21Card extends HTMLElement {
     if (filterDue || filterSoon) {
       this._el.filter.querySelector("span").textContent =
         filterDue ? text.filtersDue : text.filtersSoon(days);
+      // The shop link is opt-in: the reminder alone is shown unless the owner
+      // of the dashboard turned "filter_link" on in the card options.
       const link = this._el.filter.querySelector("a");
-      const page = FILTERS[device.model];
-      link.textContent = text.orderFilters;
-      link.href = `${SHOP}${page || ""}${UTM}`;
+      link.hidden = !this._config.filter_link;
+      if (this._config.filter_link) {
+        const page = FILTERS[device.model];
+        link.textContent = text.orderFilters;
+        link.href = `${SHOP}${page || ""}${UTM}`;
+      } else {
+        link.textContent = "";
+        link.removeAttribute("href");
+      }
     }
 
     // --- drawing ------------------------------------------------------------
@@ -810,7 +828,7 @@ class VentsA21DetailsCard extends HTMLElement {
   }
 
   static getConfigForm() {
-    return VentsA21Card.getConfigForm();
+    return configForm();
   }
 
   setConfig(config) {
