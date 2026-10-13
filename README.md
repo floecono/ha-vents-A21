@@ -41,7 +41,7 @@ Les autres machines à automate A21 (VENTS, Blauberg) utilisent la même table M
 - **Une tuile prête à poser** sur votre tableau de bord, sans rien configurer : les quatre flux d'air colorés selon leur température réelle, le rendement de l'échangeur, la position du bypass (le flux dévié contourne l'échangeur sur le dessin), les boutons de vitesse et la marche/arrêt.
 - **Une tuile « toutes les mesures »** pour ceux qui veulent tout voir : puissance, régime, débit et pression de chaque ventilateur, toutes les sondes, l'état de l'échangeur et des batteries, les entrées, l'entretien.
 - **Les alarmes en clair** : les 46 codes de la machine sont traduits (« Défaut du ventilateur de soufflage », « Sonde de CO₂ non détectée »…), en distinguant les alarmes, qui arrêtent la machine, des simples avertissements.
-- **Un rappel avant l'échéance des filtres**, 21 jours avant puis à l'échéance. En option, la tuile ajoute le lien vers les bons filtres pour votre modèle.
+- **Un rappel avant l'échéance des filtres**, 21 jours avant (délai réglable) puis à l'échéance. En option, la tuile ajoute le lien vers les bons filtres pour votre modèle.
 - **Les réglages de l'application mobile** dans la page de l'appareil : puissance des ventilateurs de soufflage et d'extraction pour chaque vitesse, veille, boost et ses temporisations, seuils d'humidité et de qualité d'air, intervalle des filtres, minuterie, bascule hiver/été.
 - **Toutes les mesures dans l'historique** et **toutes les commandes pour vos automatisations** : marche/arrêt, mode, vitesses 1 à 5 et vitesse manuelle, consigne, minuterie, programmation hebdomadaire, bypass forcé ouvert ou fermé pour le rafraîchissement nocturne.
 
@@ -93,12 +93,16 @@ type: custom:vents-a21-details-card  # toutes les mesures
 
 Avec plusieurs machines, précisez `device_id` (l'éditeur de la carte propose la liste) et, si vous voulez, `name` pour le titre.
 
-#### Lien pour commander les filtres
+#### Rappel des filtres et lien de commande
 
-Quand les filtres arrivent à échéance, la tuile principale affiche un rappel. Vous pouvez y ajouter un lien **Commander les filtres**, qui mène directement aux filtres de votre modèle sur econology.fr. Cette option est désactivée par défaut : cochez-la dans l'éditeur de la tuile, ou en YAML :
+La tuile principale affiche un rappel quand les filtres arrivent à échéance. Deux options se règlent dans l'éditeur de la tuile, ou en YAML :
+
+- **`filter_reminder_days`** : nombre de jours avant l'échéance à partir duquel le rappel s'affiche. 21 par défaut ; avec 0, il n'apparaît qu'une fois l'échéance atteinte.
+- **`filter_link`** : ajoute au rappel un lien **Commander les filtres**, qui mène directement aux filtres de votre modèle sur econology.fr. Désactivé par défaut.
 
 ```yaml
 type: custom:vents-a21-card
+filter_reminder_days: 30
 filter_link: true
 ```
 
@@ -173,7 +177,7 @@ C'est la méthode des gestions techniques de bâtiment : on ne sécurise pas le 
 - **Sortie Internet de la machine** : bloquez-la si vous n'utilisez pas le pilotage à distance de l'application mobile.
 - **Passerelle RS485 vers Ethernet** : si la machine est raccordée par une passerelle Modbus, celle-ci n'authentifie pas davantage ses clients. Placez-la dans le même réseau technique et changez son mot de passe d'administration.
 
-## État de la version 0.2.1
+## État de la version 0.2.2
 
 L'intégration est écrite d'après la table Modbus officielle de l'automate A21 (VENTS, document V55-8-1EN-02) et la notice de l'application DF Connect pour la signification des codes d'alarme. Elle est vérifiée contre un simulateur de la machine, par une suite de tests automatiques et par un essai dans une instance Home Assistant. Elle n'a pas encore été validée sur une machine réelle : vos retours sont les bienvenus, [ouvrez un ticket](https://github.com/floecono/ha-vents-A21/issues) en joignant les diagnostics.
 
