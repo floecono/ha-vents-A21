@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Ajouter une VMC double flux",
-        "description": "Saisissez l'adresse IP de la machine sur votre réseau (Wi-Fi ou Ethernet). Vous la trouvez dans l'application mobile de la machine ou dans la liste des appareils de votre box.\n\nBesoin de filtres ou d'accessoires ? [econology.fr](https://www.econology.fr/?utm_source=home-assistant&utm_medium=integration&utm_campaign=vents_a21)",
+        "description": "Saisissez l'adresse IP de la machine sur votre réseau (Wi-Fi ou Ethernet). Vous la trouvez dans l'application mobile de la machine ou dans la liste des appareils de votre box.\n\nBesoin de filtres ou d'accessoires ? [econology.fr]({shop_url})",
         "data": {
           "host": "Adresse IP",
           "model": "Modèle"

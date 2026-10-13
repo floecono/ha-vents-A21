@@ -38,6 +38,7 @@ from .const import (
     MIN_SCAN_INTERVAL,
     MODEL_GENERIC,
     MODELS,
+    SHOP_HOME_URL,
 )
 from .modbus import ModbusConnectionError, ModbusError
 
@@ -133,7 +134,10 @@ class A21ConfigFlow(ConfigFlow, domain=DOMAIN):
                 return self.async_create_entry(title=title, data=data)
             errors["base"] = error
         return self.async_show_form(
-            step_id="user", data_schema=_schema(defaults), errors=errors
+            step_id="user",
+            data_schema=_schema(defaults),
+            errors=errors,
+            description_placeholders={"shop_url": SHOP_HOME_URL},
         )
 
     async def async_step_reconfigure(

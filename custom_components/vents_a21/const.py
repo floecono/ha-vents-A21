@@ -180,6 +180,10 @@ def _shop(path: str) -> str:
     return f"{SHOP_URL}{path}{_UTM}"
 
 
+# Shop home page, shown in the setup form.
+SHOP_HOME_URL: Final = _shop("")
+
+
 # Optional probes, suggested when the unit does not have them.
 ACCESSORIES: Final[dict[str, str]] = {
     "humidity": _shop("hv2-econoprime-sonde-hygro.html"),
