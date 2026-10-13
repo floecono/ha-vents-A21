@@ -47,7 +47,58 @@ Les autres machines à automate A21 (VENTS, Blauberg) utilisent la même table M
 
 ### Tout ce que vous pouvez faire
 
-<img src="https://raw.githubusercontent.com/floecono/ha-vents-A21/main/docs/possibilites.png" alt="Vue d'ensemble : piloter, surveiller, régler, comprendre les alarmes, automatiser, deux tuiles livrées" width="900">
+Plus de 100 entités, deux tuiles, et tout passe par Modbus TCP en local, sans cloud. Les points marqués *(option)* dépendent des sondes et batteries montées sur la machine, ou d'un réglage à activer.
+
+**Piloter**, depuis la tuile, la page de l'appareil ou vos automatisations
+
+- Marche / arrêt et mode : ventilation, chauffage, refroidissement, automatique.
+- Vitesses 1, 2, 3 (jusqu'à 5 selon la machine) et vitesse manuelle en %.
+- Consigne de température de 15 à 30 °C.
+- Minuterie : lancement, vitesse, durée, température.
+- Programmation hebdomadaire : activation / désactivation.
+- Bypass : automatique, ouvert ou fermé.
+- Acquittement des alarmes, remise à zéro du compteur des filtres.
+
+**Surveiller**, chaque mesure étant une entité avec son historique
+
+- Les quatre températures : air neuf, soufflé, extrait, rejeté.
+- Rendement de récupération calculé en direct.
+- Ventilateurs : puissance en %, régime en tr/min ; débit en m³/h et pression en Pa selon le mode de régulation.
+- Position du bypass et air dévié.
+- Filtres : jours restants, état, encrassement.
+- Humidité, CO₂, PM2.5, COV, entrée 0-10 V, sondes externes *(option)*.
+- Puissance du préchauffage, du chauffage, du refroidissement *(option)*.
+- Boost, mode cheminée, chauffage et refroidissement en cours ; alarme incendie ; seuils de qualité d'air dépassés.
+- Heures de fonctionnement, pile de l'horloge.
+
+**Régler, comme dans l'application**, dans le bloc Configuration de l'appareil
+
+- Soufflage et extraction séparés pour chaque vitesse et pour la veille : déséquilibre au choix, en %, en m³/h ou en Pa.
+- Boost : vitesses, délais de marche et d'arrêt. Mode cheminée : vitesses de soufflage et d'extraction.
+- Seuils d'humidité, de CO₂, de PM2.5 et de COV. Intervalle de remplacement des filtres.
+- Sonde de régulation (air extrait, boîtier, air soufflé), température de bascule hiver / été.
+- Menu ingénieur *(désactivé par défaut)* : activation des sondes et des entrées, type de batterie, protection antigel, corrections des sondes, régulateurs PID, réglages de la batterie à eau, mise à l'heure.
+
+**Comprendre** : les 46 codes de la machine, en français
+
+- Alarmes (la machine s'arrête) et avertissements (elle continue), distingués, en clair sur la tuile et dans les capteurs.
+- Rappel des filtres avant l'échéance, délai réglable, lien vers les bons filtres en option.
+- Rendement expliqué quand il n'est pas mesurable, rappel antigel si le bypass est piloté à la main.
+
+**Automatiser** : quelques idées, toutes réalisables avec les entités ci-dessus
+
+- Vitesse 3 pendant la douche, puis retour en vitesse 2.
+- Vitesse selon la présence, l'heure ou le CO₂ d'une sonde Zigbee.
+- Free cooling nocturne à vos conditions, avec vos propres thermomètres.
+- Notification quand les filtres sont à remplacer ou qu'une alarme tombe.
+- Arrêt sur alarme incendie de votre centrale, redémarrage ensuite.
+- Réduction en votre absence, retour au confort avant votre arrivée.
+
+**Deux tuiles livrées**, rien à installer en plus
+
+- La machine d'un coup d'œil : flux colorés, rendement, bypass, vitesses, marche / arrêt.
+- Toutes les mesures : vue technique complète, mise à jour en direct.
+- Options : rappel des filtres, lien de commande, commande du bypass. Français et anglais, thème clair et sombre.
 
 ### Seules vos options apparaissent
 
