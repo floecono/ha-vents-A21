@@ -236,7 +236,7 @@ const STYLE = `
   .unit .setpoint { font-size: 12px; text-anchor: middle; fill: var(--secondary-text-color); }
   .unit .setpoint tspan.v { font-size: 14px; font-weight: 500; fill: var(--primary-text-color); font-variant-numeric: tabular-nums; }
   .unit .casing { fill: var(--secondary-background-color, rgba(127,127,127,.12)); stroke: var(--divider-color); }
-  .unit .core { fill: var(--card-background-color, #fff); stroke: var(--divider-color); stroke-width: 1.5; }
+  .unit .core { fill: var(--card-background-color, #fff); fill-opacity: .82; stroke: var(--divider-color); stroke-width: 1.5; }
   .unit .eff { font-size: 19px; font-weight: 500; text-anchor: middle; font-variant-numeric: tabular-nums; }
   .unit .eff.word { font-size: 14px; }
   .unit .effLabel { font-size: 10px; text-anchor: middle; fill: var(--secondary-text-color); }
@@ -315,21 +315,23 @@ function roundedPath(points, radius = STREAM_RADIUS) {
 }
 
 // The exchanger branch continues the trunk straight into the middle of a
-// slanted face of the exchanger and crosses it out of sight, under the
-// core; the detour leaves the end of the trunk in a straight line, out of
-// its round cap. Both branches share the width of the stream.
+// slanted face of the exchanger and crosses it under the core, which is
+// slightly translucent so the two streams can be seen meeting in its
+// centre; the detour leaves the end of the trunk downwards and follows the
+// outline of the core at a distance. Both branches share the width of the
+// stream.
 const R = STREAM_RADIUS;
 const STREAMS = {
   fresh: {
     in: "M12 62 H148",
     through: roundedPath([[148, 62], [182, 62], [218, 138], [250, 138]]),
-    around: roundedPath([[148, 62], [134, 100], [200, 164], [250, 138], [250 + R, 138]]),
+    around: roundedPath([[148, 62], [144, 74], [144, 126], [204, 166], [250, 138], [250 + R, 138]]),
     out: "M250 138 H380",
   },
   stale: {
     in: "M388 62 H252",
     through: roundedPath([[252, 62], [218, 62], [182, 138], [150, 138]]),
-    around: roundedPath([[252, 62], [266, 100], [200, 164], [150, 138], [150 - R, 138]]),
+    around: roundedPath([[252, 62], [256, 74], [256, 126], [196, 166], [150, 138], [150 - R, 138]]),
     out: "M150 138 H20",
   },
 };
