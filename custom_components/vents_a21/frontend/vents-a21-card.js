@@ -318,20 +318,20 @@ function roundedPath(points, radius = STREAM_RADIUS) {
 // slanted face of the exchanger and crosses it under the core, which is
 // slightly translucent so the two streams can be seen meeting in its
 // centre; the detour leaves the end of the trunk downwards and follows the
-// outline of the core at a distance. Both branches share the width of the
-// stream.
+// outline of the core at a constant 14 units (its flat side, then its lower
+// face, then up to the trunk). Both branches share the width of the stream.
 const R = STREAM_RADIUS;
 const STREAMS = {
   fresh: {
     in: "M12 62 H148",
     through: roundedPath([[148, 62], [182, 62], [218, 138], [250, 138]]),
-    around: roundedPath([[148, 62], [144, 74], [144, 126], [204, 166], [250, 138], [250 + R, 138]]),
+    around: roundedPath([[148, 62], [150, 133], [200, 167], [250, 138], [250 + R, 138]]),
     out: "M250 138 H380",
   },
   stale: {
     in: "M388 62 H252",
     through: roundedPath([[252, 62], [218, 62], [182, 138], [150, 138]]),
-    around: roundedPath([[252, 62], [256, 74], [256, 126], [196, 166], [150, 138], [150 - R, 138]]),
+    around: roundedPath([[252, 62], [250, 133], [200, 167], [150, 138], [150 - R, 138]]),
     out: "M150 138 H20",
   },
 };
