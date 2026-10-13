@@ -85,6 +85,8 @@ const TEXT = {
     manual: "Manuelle",
     manualAt: (p) => `Vitesse manuelle ${p} %`,
     manualSlider: "Vitesse manuelle",
+    setpoint: "Consigne",
+    noSetpoint: "pas de régulation",
     boost: "boost en cours",
     timer: "minuterie en cours",
     schedule: "programmation hebdomadaire",
@@ -157,6 +159,8 @@ const TEXT = {
     manual: "Manual",
     manualAt: (p) => `Manual speed ${p} %`,
     manualSlider: "Manual speed",
+    setpoint: "Setpoint",
+    noSetpoint: "no regulation",
     boost: "boost running",
     timer: "timer running",
     schedule: "weekly schedule",
@@ -225,6 +229,8 @@ const STYLE = `
   .unit .side { fill: var(--secondary-text-color); font-size: 11px; }
   .unit .label { fill: var(--secondary-text-color); font-size: 12px; }
   .unit .temp { font-size: 24px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .unit .setpoint { font-size: 12px; text-anchor: middle; fill: var(--secondary-text-color); }
+  .unit .setpoint tspan.v { font-size: 14px; font-weight: 500; fill: var(--primary-text-color); font-variant-numeric: tabular-nums; }
   .unit .casing { fill: var(--secondary-background-color, rgba(127,127,127,.12)); stroke: var(--divider-color); }
   .unit .core { fill: var(--card-background-color, #fff); stroke: var(--divider-color); stroke-width: 1.5; }
   .unit .eff { font-size: 19px; font-weight: 500; text-anchor: middle; font-variant-numeric: tabular-nums; }
@@ -324,6 +330,7 @@ const TEMPLATE = `
           </linearGradient>
         </defs>
 
+        <text class="setpoint" x="200" y="15"></text>
         <rect class="casing" x="128" y="24" width="144" height="152" rx="16"/>
         <text class="side" x="12" y="104" data-text="outside"></text>
         <text class="side" x="388" y="104" text-anchor="end" data-text="inside"></text>
@@ -361,6 +368,7 @@ const TEMPLATE = `
         <rect class="hit" x="0" y="100" width="126" height="100" data-more="exhaust"/>
         <rect class="hit" x="274" y="100" width="126" height="100" data-more="supply"/>
         <rect class="hit" x="154" y="54" width="92" height="92" data-more="efficiency"/>
+        <rect class="hit" x="128" y="0" width="144" height="22" data-more="climate"/>
       </svg>
 
       <div class="speeds" role="group"></div>
@@ -504,6 +512,7 @@ class VentsA21Card extends HTMLElement {
       filter: root.querySelector(".notice.filter"),
       unit: root.querySelector(".unit"),
       eff: root.querySelector(".eff"),
+      setpoint: root.querySelector(".setpoint"),
       effLabel: root.querySelector(".effLabel"),
       speeds: root.querySelector(".speeds"),
       bypassControl: root.querySelector(".bypassctl"),
@@ -584,6 +593,7 @@ class VentsA21Card extends HTMLElement {
             s.state,
             a.fan_mode,
             a.fan_modes,
+            a.temperature,
             a.codes,
             a.exchanger,
             a.bypassed_air,
@@ -790,6 +800,20 @@ class VentsA21Card extends HTMLElement {
         .map((key) => `${text[key]} ${root.querySelector(`[data-temp="${key}"]`).textContent}`)
         .join(", "),
     );
+
+    // --- setpoint, above the exchanger ---------------------------------------
+    const target = Number.parseFloat(climate.attributes.temperature);
+    this._el.setpoint.replaceChildren();
+    if (on && Number.isFinite(target)) {
+      const label = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+      label.textContent = `${text.setpoint} `;
+      const value = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+      value.setAttribute("class", "v");
+      // The unit's setpoint is a whole number of degrees.
+      const degrees = `${Math.round(target)} °C`;
+      value.textContent = climate.state === "fan_only" ? `${degrees} · ${text.noSetpoint}` : degrees;
+      this._el.setpoint.append(label, value);
+    }
 
     // --- speeds -------------------------------------------------------------
     const modes = climate.attributes.fan_modes || [];
