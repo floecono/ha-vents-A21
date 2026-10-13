@@ -181,3 +181,11 @@ pytest
 `tests/simulator.py` est un simulateur Modbus TCP de l'automate A21, sans dépendance. Lancé seul (`python tests/simulator.py --port 5020`), il permet d'essayer l'intégration sans machine. Le client Modbus est embarqué dans l'intégration (`modbus.py`) pour ne dépendre d'aucune bibliothèque externe.
 
 L'ordre des octets des registres composés (minuteries, version du micrologiciel) reprend celui documenté par le projet [pybls21](https://github.com/jvitkauskas/pybls21) pour l'automate Blauberg S21, de la même famille que l'A21.
+
+## Licence
+
+Copyright © 2026 Econology.
+
+Cette intégration est un logiciel libre, distribué sous la licence [GNU GPL version 3](LICENSE) : vous pouvez l'utiliser, la modifier et la redistribuer, à condition de conserver cette mention et de publier vos versions modifiées sous la même licence. Elle est fournie sans aucune garantie.
+
+La licence porte sur le code. Elle ne donne aucun droit sur les noms et logos Econology et ECONOPRIME.
