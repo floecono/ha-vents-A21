@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://www.econology.fr/?utm_source=github&utm_medium=readme&utm_campaign=vents_a21">
-    <img src="docs/econology.png" alt="Econology, la qualité d'air au meilleur prix" width="302">
+    <img src="https://raw.githubusercontent.com/floecono/ha-vents-A21/main/docs/econology.png" alt="Econology, la qualité d'air au meilleur prix" width="302">
   </a>
 </p>
 
@@ -13,7 +13,7 @@ La liaison se fait en **Modbus TCP sur votre réseau local** (Wi-Fi ou Ethernet)
 Une intégration proposée par [Econology](https://www.econology.fr/?utm_source=github&utm_medium=readme&utm_campaign=vents_a21), spécialiste français de la ventilation.
 
 <p align="center">
-  <img src="docs/tuile.png" alt="La tuile de tableau de bord : les quatre flux d'air colorés selon leur température, le rendement au centre, les vitesses en dessous" width="440">
+  <img src="https://raw.githubusercontent.com/floecono/ha-vents-A21/main/docs/tuile.png" alt="La tuile de tableau de bord : les quatre flux d'air colorés selon leur température, le rendement au centre, les vitesses en dessous" width="440">
 </p>
 
 ## Machines compatibles
@@ -79,7 +79,7 @@ Sur votre tableau de bord : crayon en haut à droite, **Ajouter une carte**, che
 
 | La machine d'un coup d'œil | Toutes les mesures |
 |---|---|
-| <img src="docs/tuile.png" alt="Tuile principale" width="360"> | <img src="docs/tuile-details.png" alt="Tuile détaillée : fonctionnement, ventilateurs, températures, qualité d'air, échangeur, entrées, entretien" width="360"> |
+| <img src="https://raw.githubusercontent.com/floecono/ha-vents-A21/main/docs/tuile.png" alt="Tuile principale" width="360"> | <img src="https://raw.githubusercontent.com/floecono/ha-vents-A21/main/docs/tuile-details.png" alt="Tuile détaillée : fonctionnement, ventilateurs, températures, qualité d'air, échangeur, entrées, entretien" width="360"> |
 
 En YAML :
 
