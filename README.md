@@ -96,7 +96,7 @@ Plus de 100 entités, deux tuiles, et tout passe par Modbus TCP en local, sans c
 
 **Deux tuiles livrées**, rien à installer en plus
 
-- La machine d'un coup d'œil : flux colorés, rendement, bypass, vitesses, marche / arrêt.
+- La machine d'un coup d'œil : flux colorés, rendement, bypass, vitesses, marche / arrêt, curseur de vitesse manuelle quand « Manuelle » est choisie.
 - Toutes les mesures : vue technique complète, mise à jour en direct.
 - Options : rappel des filtres, lien de commande, commande du bypass. Français et anglais, thème clair et sombre.
 
@@ -291,7 +291,7 @@ C'est la méthode des gestions techniques de bâtiment : on ne sécurise pas le 
 
 ## État de la version 0.2.7
 
-L'intégration est écrite d'après la table Modbus officielle de l'automate A21 (VENTS, document V55-8-1EN-02) et la notice de l'application DF Connect pour la signification des codes d'alarme. Elle est vérifiée contre un simulateur de la machine, par une suite de tests automatiques et par un essai dans une instance Home Assistant. Elle n'a pas encore été validée sur une machine réelle : vos retours sont les bienvenus, [ouvrez un ticket](https://github.com/floecono/ha-vents-A21/issues) en joignant les diagnostics.
+L'intégration est écrite d'après la table Modbus officielle de l'automate A21 (VENTS, document V55-8-1EN-02) et la notice de l'application DF Connect pour la signification des codes d'alarme. Elle est vérifiée contre un simulateur de la machine, par une suite de tests automatiques et par un essai dans une instance Home Assistant. Elle est utilisée sur une DF 350 Connect (micrologiciel 0.41) depuis le 13 octobre 2026 ; la mise à l'heure, l'ordre des octets et les codes d'alarme y ont été vérifiés. Vos retours sur les autres modèles sont les bienvenus, [ouvrez un ticket](https://github.com/floecono/ha-vents-A21/issues) en joignant les diagnostics.
 
 ## Besoin de filtres, d'une sonde, d'un conseil ?
 
