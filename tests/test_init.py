@@ -250,3 +250,22 @@ async def test_one_connection_is_kept(
     await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
     assert not coordinator.api._client.connected
+
+
+async def test_mac_from_neighbour_table(
+    hass: HomeAssistant, simulator: A21Simulator, tmp_path, monkeypatch
+) -> None:
+    """The MAC address of the unit is read from the host's neighbour table."""
+    from custom_components.vents_a21 import coordinator as module
+
+    table = tmp_path / "arp"
+    table.write_text(
+        "IP address HW type Flags HW address Mask Device\n"
+        "192.0.2.1 0x1 0x2 02:fc:00:00:00:05 * eth0\n"
+        "127.0.0.1 0x1 0x2 A4:CF:12:B3:E9:D0 * lo\n"
+    )
+    monkeypatch.setattr(module, "ARP_TABLE", table)
+    entry = await setup_entry(hass, simulator)
+    assert entry.runtime_data.mac == "a4:cf:12:b3:e9:d0"
+    device = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)[0]
+    assert (dr.CONNECTION_NETWORK_MAC, "a4:cf:12:b3:e9:d0") in device.connections
