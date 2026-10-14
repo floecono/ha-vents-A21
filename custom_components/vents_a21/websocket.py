@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 
 from .const import DOMAIN
+from .entity import device_entry_ids
 from .coordinator import A21Coordinator
 from .details import build_details
 
@@ -29,8 +30,7 @@ def _coordinator(hass: HomeAssistant, device_id: str | None) -> A21Coordinator |
         if entry.state is ConfigEntryState.LOADED
     ]
     if device_id:
-        device = dr.async_get(hass).async_get(device_id)
-        wanted = device.config_entries if device else set()
+        wanted = device_entry_ids(dr.async_get(hass).async_get(device_id))
         entries = [entry for entry in entries if entry.entry_id in wanted]
     return entries[0].runtime_data if entries else None
 

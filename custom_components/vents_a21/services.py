@@ -9,6 +9,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 
 from .const import DOMAIN
+from .entity import device_entry_ids
 from .coordinator import A21ConfigEntry
 from .filters import COARSE, FINE
 
@@ -29,7 +30,7 @@ RECEIVED_SCHEMA = vol.Schema({vol.Required(ATTR_DEVICE_ID): cv.string})
 
 def _entry_of(hass: HomeAssistant, device_id: str) -> A21ConfigEntry:
     device = dr.async_get(hass).async_get(device_id)
-    for entry_id in device.config_entries if device else ():
+    for entry_id in device_entry_ids(device):
         entry = hass.config_entries.async_get_entry(entry_id)
         if entry is not None and entry.domain == DOMAIN and entry.state.recoverable:
             if hasattr(entry, "runtime_data"):

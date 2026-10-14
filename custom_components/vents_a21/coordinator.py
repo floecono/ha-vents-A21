@@ -85,11 +85,12 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
     @property
     def device_name(self) -> str:
         """Return the name the user gave the device, else its default name."""
-        device = dr.async_get(self.hass).async_get_device(
-            {(DOMAIN, self.config_entry.entry_id)}
+        devices = dr.async_entries_for_config_entry(
+            dr.async_get(self.hass), self.config_entry.entry_id
         )
-        if device is None:
+        if not devices:
             return self.config_entry.title
+        device = devices[0]
         return device.name_by_user or device.name or self.config_entry.title
 
     @callback

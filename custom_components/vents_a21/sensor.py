@@ -13,8 +13,6 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import (
-    CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-    CONCENTRATION_PARTS_PER_MILLION,
     PERCENTAGE,
     REVOLUTIONS_PER_MINUTE,
     EntityCategory,
@@ -30,6 +28,10 @@ from homeassistant.helpers.typing import StateType
 
 from .alarms import ALARM, WARNING
 from .api import MIN_EFFICIENCY_DELTA, A21Data
+
+# Units spelled out: the CONCENTRATION_* constants were deprecated in 2026.
+MICROGRAMS_PER_CUBIC_METER = "μg/m³"
+PARTS_PER_MILLION = "ppm"
 from .const import (
     CL_10V_SENSOR_CTRL,
     CL_EXT_CO2_CTRL,
@@ -282,28 +284,28 @@ SENSORS: tuple[A21SensorDescription, ...] = (
         "co2",
         IR_CO2_INT,
         CL_INT_CO2_CTRL,
-        CONCENTRATION_PARTS_PER_MILLION,
+        PARTS_PER_MILLION,
         SensorDeviceClass.CO2,
     ),
     _air_quality(
         "co2_external",
         IR_CO2_EXT,
         CL_EXT_CO2_CTRL,
-        CONCENTRATION_PARTS_PER_MILLION,
+        PARTS_PER_MILLION,
         SensorDeviceClass.CO2,
     ),
     _air_quality(
         "pm25",
         IR_PM25_INT,
         CL_INT_PM25_CTRL,
-        CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+        MICROGRAMS_PER_CUBIC_METER,
         SensorDeviceClass.PM25,
     ),
     _air_quality(
         "pm25_external",
         IR_PM25_EXT,
         CL_EXT_PM25_CTRL,
-        CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+        MICROGRAMS_PER_CUBIC_METER,
         SensorDeviceClass.PM25,
     ),
     _air_quality("voc", IR_VOC_INT, CL_INT_VOC_CTRL, PERCENTAGE, None),

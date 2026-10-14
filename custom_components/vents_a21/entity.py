@@ -2,9 +2,24 @@
 
 from __future__ import annotations
 
+from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .coordinator import A21Coordinator
+
+
+def device_entry_ids(device: DeviceEntry | None) -> set[str]:
+    """Return the config entries a device belongs to, on old and new cores.
+
+    Since 2026 a device belongs to one config entry (``config_entry_id``);
+    older cores only have the ``config_entries`` set.
+    """
+    if device is None:
+        return set()
+    entry_id = getattr(device, "config_entry_id", None)
+    if entry_id:
+        return {entry_id}
+    return set(getattr(device, "config_entries", ()))
 
 
 class A21Entity(CoordinatorEntity[A21Coordinator]):

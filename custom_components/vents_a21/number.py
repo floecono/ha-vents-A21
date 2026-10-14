@@ -21,8 +21,6 @@ from homeassistant.components.number import (
     NumberMode,
 )
 from homeassistant.const import (
-    CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-    CONCENTRATION_PARTS_PER_MILLION,
     PERCENTAGE,
     EntityCategory,
     UnitOfPressure,
@@ -34,6 +32,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import A21Data
+
+# Units spelled out: the CONCENTRATION_* constants were deprecated in 2026.
+MICROGRAMS_PER_CUBIC_METER = "μg/m³"
+PARTS_PER_MILLION = "ppm"
 from .const import (
     CL_EXT_CO2_CTRL,
     CL_EXT_PM25_CTRL,
@@ -350,7 +352,7 @@ NUMBERS: tuple[A21NumberDescription, ...] = (
         HR_SET_CO2,
         400,
         2000,
-        CONCENTRATION_PARTS_PER_MILLION,
+        PARTS_PER_MILLION,
         step=50,
         enabled_fn=_any_coil(CL_INT_CO2_CTRL, CL_EXT_CO2_CTRL),
     ),
@@ -359,7 +361,7 @@ NUMBERS: tuple[A21NumberDescription, ...] = (
         HR_SET_PM25,
         100,
         1000,
-        CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+        MICROGRAMS_PER_CUBIC_METER,
         step=10,
         enabled_fn=_any_coil(CL_INT_PM25_CTRL, CL_EXT_PM25_CTRL),
     ),
@@ -482,7 +484,7 @@ NUMBERS: tuple[A21NumberDescription, ...] = (
         HR_CO2_SENSOR_RANGE,
         500,
         10000,
-        CONCENTRATION_PARTS_PER_MILLION,
+        PARTS_PER_MILLION,
         step=100,
         engineering=True,
     ),
@@ -491,7 +493,7 @@ NUMBERS: tuple[A21NumberDescription, ...] = (
         HR_PM25_SENSOR_RANGE,
         500,
         10000,
-        CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+        MICROGRAMS_PER_CUBIC_METER,
         step=100,
         engineering=True,
     ),
