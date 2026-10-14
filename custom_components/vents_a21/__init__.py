@@ -98,7 +98,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: A21ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: A21ConfigEntry) -> bool:
     """Unload one ventilation unit."""
     entry.runtime_data.async_notify_unload()
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unloaded:
+        await entry.runtime_data.async_shutdown()
+    return unloaded
 
 
 async def _async_entry_updated(hass: HomeAssistant, entry: A21ConfigEntry) -> None:

@@ -37,6 +37,7 @@ from .const import (
 from .modbus import (
     EXC_ILLEGAL_DATA_ADDRESS,
     ModbusConnectionError,
+    ModbusError,
     ModbusExceptionResponse,
     ModbusTcpClient,
 )
@@ -265,9 +266,13 @@ _Reader = Callable[[int, int], Awaitable[Sequence[int | bool]]]
 class A21Api:
     """Serialised access to one A21 controller.
 
-    Each poll or write opens its own short TCP connection. The controller
-    only accepts one client per network interface and long-lived connections
-    are known to go stale, so the socket is never kept between polls.
+    One TCP connection is kept open across polls and writes. The Wi-Fi
+    module of the unit has a small embedded TCP stack with few sockets:
+    opening and closing a connection at every poll, on a link that loses
+    the odd packet, can leave it with half-closed sockets until it has none
+    left and answers nobody. A connection that goes stale is dropped at the
+    first failed request and reopened at the next poll. Only
+    async_identify, used once by the setup form, closes after itself.
     """
 
     def __init__(self, host: str, port: int, unit_id: int) -> None:
@@ -288,37 +293,47 @@ class A21Api:
             await self._client.connect()
 
     async def async_identify(self) -> int:
-        """Return the device type register (1 for an A21)."""
+        """Return the device type register (1 for an A21).
+
+        Used by the setup form. A connection opened just for this is closed
+        again; the connection of a running unit is left as it is.
+        """
         async with self._lock:
+            opened = not self._client.connected
             await self._connect()
             try:
                 return (await self._client.read_input_registers(IR_DEVICE_TYPE, 1))[0]
-            finally:
+            except ModbusError:
                 await self._client.close()
+                raise
+            finally:
+                if opened:
+                    await self._client.close()
 
     async def async_poll(self) -> A21Data:
-        """Read every table."""
+        """Read every table, over the connection kept from the last time."""
         async with self._lock:
             await self._connect()
-            try:
-                return await self._read_all()
-            finally:
-                await self._client.close()
+            # On a transport or protocol error the client drops the socket
+            # itself; the next poll opens a fresh one.
+            return await self._read_all()
 
     async def async_write(self, writes: Sequence[Write]) -> A21Data:
         """Apply writes in order, then return the state read back."""
         async with self._lock:
             await self._connect()
-            try:
-                for write in writes:
-                    if isinstance(write, CoilWrite):
-                        await self._client.write_coil(write.address, write.value)
-                    else:
-                        await self._client.write_register(write.address, write.value)
-                await asyncio.sleep(_SETTLE_DELAY)
-                return await self._read_all()
-            finally:
-                await self._client.close()
+            for write in writes:
+                if isinstance(write, CoilWrite):
+                    await self._client.write_coil(write.address, write.value)
+                else:
+                    await self._client.write_register(write.address, write.value)
+            await asyncio.sleep(_SETTLE_DELAY)
+            return await self._read_all()
+
+    async def async_close(self) -> None:
+        """Close the connection, when the unit is unloaded or Home Assistant stops."""
+        async with self._lock:
+            await self._client.close()
 
     async def _read_all(self) -> A21Data:
         client = self._client

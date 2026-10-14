@@ -12,7 +12,7 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import section
 from homeassistant.helpers.selector import (
     BooleanSelector,
@@ -96,9 +96,23 @@ def _flatten(user_input: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def _async_check(data: dict[str, Any]) -> str | None:
-    """Return an error key, or None when an A21 controller answers."""
+async def _async_check(hass: HomeAssistant, data: dict[str, Any]) -> str | None:
+    """Return an error key, or None when an A21 controller answers.
+
+    The unit accepts one Modbus TCP client at a time, and a unit already
+    set up keeps its connection open: that unit is checked through its own
+    connection rather than a second one it would refuse.
+    """
     api = A21Api(data[CONF_HOST], data[CONF_PORT], data[CONF_UNIT_ID])
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        running = getattr(entry, "runtime_data", None)
+        if (
+            running is not None
+            and entry.data[CONF_HOST] == data[CONF_HOST]
+            and entry.data[CONF_PORT] == data[CONF_PORT]
+        ):
+            api = running.api
+            break
     try:
         device_type = await api.async_identify()
     except ModbusConnectionError:
@@ -130,7 +144,7 @@ class A21ConfigFlow(ConfigFlow, domain=DOMAIN):
             self._async_abort_entries_match(
                 {CONF_HOST: data[CONF_HOST], CONF_PORT: data[CONF_PORT]}
             )
-            if (error := await _async_check(data)) is None:
+            if (error := await _async_check(self.hass, data)) is None:
                 model = MODELS[data[CONF_MODEL]]
                 title = "VENTS A21" if data[CONF_MODEL] == MODEL_GENERIC else model.name
                 return self.async_create_entry(title=title, data=data)
@@ -154,7 +168,7 @@ class A21ConfigFlow(ConfigFlow, domain=DOMAIN):
             address = {CONF_HOST: data[CONF_HOST], CONF_PORT: data[CONF_PORT]}
             if any(entry.data[key] != value for key, value in address.items()):
                 self._async_abort_entries_match(address)
-            if (error := await _async_check(data)) is None:
+            if (error := await _async_check(self.hass, data)) is None:
                 return self.async_update_reload_and_abort(entry, data_updates=data)
             errors["base"] = error
         return self.async_show_form(

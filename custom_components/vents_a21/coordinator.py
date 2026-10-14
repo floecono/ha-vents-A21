@@ -93,6 +93,11 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         device = devices[0]
         return device.name_by_user or device.name or self.config_entry.title
 
+    async def async_shutdown(self) -> None:
+        """Stop polling and close the connection to the unit."""
+        await super().async_shutdown()
+        await self.api.async_close()
+
     @callback
     def async_notify_unload(self) -> None:
         """Tell the cards following this unit that it is going away."""

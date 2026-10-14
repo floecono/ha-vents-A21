@@ -233,3 +233,20 @@ async def test_unload(hass: HomeAssistant, entry: MockConfigEntry) -> None:
     """The entry unloads cleanly."""
     assert await hass.config_entries.async_unload(entry.entry_id)
     assert entry.state is ConfigEntryState.NOT_LOADED
+
+
+async def test_one_connection_is_kept(
+    hass: HomeAssistant, simulator: A21Simulator, entry: MockConfigEntry
+) -> None:
+    """Polls and writes reuse one TCP connection instead of opening one each."""
+    coordinator = entry.runtime_data
+    before = simulator.connections
+    await coordinator.async_refresh()
+    await coordinator.async_refresh()
+    await coordinator.async_write_register(2, 3)
+    assert simulator.connections == before
+    assert coordinator.api._client.connected
+    # Unloading the unit closes it.
+    await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert not coordinator.api._client.connected
