@@ -130,7 +130,7 @@ Ou : **Paramètres**, **Appareils et services**, **Ajouter une intégration**, c
 
 ### 4. Poser les tuiles
 
-Sur votre tableau de bord : crayon en haut à droite, **Ajouter une carte**, cherchez « VMC ». Deux tuiles sont proposées, et chacune trouve la machine toute seule. Rien à déclarer dans les ressources : elles sont livrées avec l'intégration.
+Sur votre tableau de bord : crayon en haut à droite, **Ajouter une carte**, cherchez « VMC ». Deux tuiles sont proposées, et chacune trouve la machine toute seule. Rien à déclarer dans les ressources : l'intégration inscrit elle-même sa carte dans **Paramètres → Tableaux de bord → Ressources** et la met à jour à chaque version (ne supprimez pas cette ligne ; si vos ressources sont en YAML, la carte est chargée directement par la page).
 
 | La machine d'un coup d'œil | Toutes les mesures |
 |---|---|
