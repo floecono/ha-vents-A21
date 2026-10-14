@@ -96,7 +96,7 @@ Plus de 100 entités, deux tuiles, et tout passe par Modbus TCP en local, sans c
 
 **Deux tuiles livrées**, rien à installer en plus
 
-- La machine d'un coup d'œil : flux colorés, consigne au-dessus de l'échangeur, rendement, bypass, vitesses, marche / arrêt, curseur de vitesse manuelle quand « Manuelle » est choisie.
+- La machine d'un coup d'œil : flux colorés, consigne au-dessus de l'échangeur (au degré entier, c'est la résolution de la machine), rendement, bypass, vitesses, marche / arrêt, curseur de vitesse manuelle quand « Manuelle » est choisie. Les points qui circulent dans les flux vont à la vitesse de chaque ventilateur, et la ligne « Ventilateurs » affiche dès le changement de vitesse le pourcentage visé, le temps que les ventilateurs y arrivent.
 - Toutes les mesures : vue technique complète, mise à jour en direct.
 - Options : rappel des filtres, lien de commande, commande du bypass. Français et anglais, thème clair et sombre.
 
