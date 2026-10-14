@@ -66,4 +66,9 @@ def test_card_knows_every_model() -> None:
         if model.filters_url is None:
             continue
         page = model.filters_url.removeprefix(SHOP_URL).split("?")[0]
-        assert f'"{model.name}": "{page}"' in card, model.name
+        start = card.find(f'"{model.name}": {{')
+        assert start >= 0, model.name
+        block = card[start : card.find("},", start)]
+        assert f'page: "{page}"' in block, model.name
+        for cls, sku in model.filters:
+            assert f'["{cls}", "{sku}"]' in block, (model.name, cls)

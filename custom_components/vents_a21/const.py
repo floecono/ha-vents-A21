@@ -179,6 +179,8 @@ class Model:
     reference: str | None = None
     product_url: str | None = None
     filters_url: str | None = None
+    # Replacement filters, (class, shop SKU): what the card puts in the cart.
+    filters: tuple[tuple[str, str], ...] = ()
 
 
 def _shop(path: str) -> str:
@@ -205,6 +207,7 @@ MODELS: Final[dict[str, Model]] = {
         "ZEPH240A21",
         _shop("zephyr-240-connect-vmc-double-flux-zeph240a21-econoprime.html"),
         _shop("filtre-f7-vmc-double-flux-zephyr-240-fzeph240f7-econoprime.html"),
+        (("G4", "REF128848"), ("F7", "REF128847")),
     ),
     "zephyr_270_v_connect_r": Model(
         "ECONOPRIME",
@@ -212,6 +215,7 @@ MODELS: Final[dict[str, Model]] = {
         "114800002",
         _shop("zephyr-270-connect-econoprime-vmc-double-flux-114800002.html"),
         _shop("filtre-f7-zephyr-270-12300001-econoprime.html"),
+        (("G4", "REF135207"), ("F7", "REF135206")),
     ),
     "zephyr_550_v_ph_connect_r": Model(
         "ECONOPRIME",
@@ -221,6 +225,7 @@ MODELS: Final[dict[str, Model]] = {
         _shop(
             "filtres-panneau-596x164x60-econoprime-filtres-de-rechange-pour-centrale-double-flux-596-x-164-x-60-mm.html"
         ),
+        (("G4", "REF142162"), ("F7", "REF142163")),
     ),
     "df_180_flat_connect": Model(
         "ECONOPRIME",
@@ -228,6 +233,7 @@ MODELS: Final[dict[str, Model]] = {
         "DFF18021",
         _shop("df-180-flat-connect-econoprime-vmc-double-flux.html"),
         _shop("filtre-vmc-double-flux-df-180-econoprime.html"),
+        (("G4", "REF102165"), ("F7", "REF102166")),
     ),
     "df_270_connect": Model(
         "ECONOPRIME",
@@ -235,6 +241,7 @@ MODELS: Final[dict[str, Model]] = {
         "DF27021",
         _shop("df-270-connect-econoprime-vmc-double-flux.html"),
         _shop("filtre-vmc-double-flux-df-270-econoprime.html"),
+        (("G4", "REF102170"), ("F8", "REF102171")),
     ),
     "df_350_connect": Model(
         "ECONOPRIME",
@@ -242,6 +249,7 @@ MODELS: Final[dict[str, Model]] = {
         "DF35021",
         _shop("df-350-connect-econoprime-vmc-double-flux.html"),
         _shop("filtre-vmc-double-flux-df-350-econoprime.html"),
+        (("G4", "REF102185"), ("F7", "REF102186")),
     ),
     MODEL_GENERIC: Model("VENTS", "A21"),
 }

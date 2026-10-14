@@ -153,7 +153,7 @@ Avec plusieurs machines, précisez `device_id` (l'éditeur de la carte propose l
 La tuile principale affiche un rappel quand les filtres arrivent à échéance. Deux options se règlent dans l'éditeur de la tuile, ou en YAML :
 
 - **`filter_reminder_days`** : nombre de jours avant l'échéance à partir duquel le rappel s'affiche. 21 par défaut ; avec 0, il n'apparaît qu'une fois l'échéance atteinte.
-- **`filter_link`** : ajoute au rappel un lien **Commander les filtres**, qui mène directement aux filtres de votre modèle sur econology.fr. Désactivé par défaut.
+- **`filter_link`** : ajoute au rappel un bouton **Commander les filtres**. Il demande quels filtres vous voulez (G4 et F7, tous deux cochés), puis les met directement dans votre panier sur econology.fr, dans un nouvel onglet : il ne reste qu'à valider. La commande est repérée comme venant de Home Assistant. Désactivé par défaut.
 
 ```yaml
 type: custom:vents-a21-card

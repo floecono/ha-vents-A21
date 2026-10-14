@@ -17,15 +17,40 @@ const DETAILS_CARD = "vents-a21-details-card";
 const UTM = "?utm_source=home-assistant&utm_medium=card&utm_campaign=vents_a21";
 const SHOP = "https://www.econology.fr/";
 
-// Replacement filters per model. Keep in sync with MODELS in const.py
+// Where "order filters" puts the chosen filters in the shop's cart (POST
+// only; the shop then opens the cart). The reference tells the shop the
+// cart came from Home Assistant.
+const CART = `${SHOP}veqai/cart`;
+const CART_REF = "home_assistant";
+
+// Replacement filters per model: the shop page that presents them, and
+// (class, shop SKU) of each one. Keep in sync with MODELS in const.py
 // (tests/test_frontend.py checks it).
 const FILTERS = {
-  "Zephyr 240 S Connect": "filtre-f7-vmc-double-flux-zephyr-240-fzeph240f7-econoprime.html",
-  "Zephyr 270 V Connect R": "filtre-f7-zephyr-270-12300001-econoprime.html",
-  "Zephyr 550 V PH Connect R": "filtres-panneau-596x164x60-econoprime-filtres-de-rechange-pour-centrale-double-flux-596-x-164-x-60-mm.html",
-  "DF 180 Flat Connect": "filtre-vmc-double-flux-df-180-econoprime.html",
-  "DF 270 Connect": "filtre-vmc-double-flux-df-270-econoprime.html",
-  "DF 350 Connect": "filtre-vmc-double-flux-df-350-econoprime.html",
+  "Zephyr 240 S Connect": {
+    page: "filtre-f7-vmc-double-flux-zephyr-240-fzeph240f7-econoprime.html",
+    items: [["G4", "REF128848"], ["F7", "REF128847"]],
+  },
+  "Zephyr 270 V Connect R": {
+    page: "filtre-f7-zephyr-270-12300001-econoprime.html",
+    items: [["G4", "REF135207"], ["F7", "REF135206"]],
+  },
+  "Zephyr 550 V PH Connect R": {
+    page: "filtres-panneau-596x164x60-econoprime-filtres-de-rechange-pour-centrale-double-flux-596-x-164-x-60-mm.html",
+    items: [["G4", "REF142162"], ["F7", "REF142163"]],
+  },
+  "DF 180 Flat Connect": {
+    page: "filtre-vmc-double-flux-df-180-econoprime.html",
+    items: [["G4", "REF102165"], ["F7", "REF102166"]],
+  },
+  "DF 270 Connect": {
+    page: "filtre-vmc-double-flux-df-270-econoprime.html",
+    items: [["G4", "REF102170"], ["F8", "REF102171"]],
+  },
+  "DF 350 Connect": {
+    page: "filtre-vmc-double-flux-df-350-econoprime.html",
+    items: [["G4", "REF102185"], ["F7", "REF102186"]],
+  },
 };
 
 // Alarm codes that only say "change the filters": the filter notice covers them.
@@ -105,6 +130,12 @@ const TEXT = {
     filtersDue: "Filtres à remplacer",
     filtersSoon: (n) => `Filtres à remplacer dans ${n} jour${n > 1 ? "s" : ""}`,
     orderFilters: "Commander les filtres",
+    orderTitle: "Commander les filtres",
+    orderWhich: "Quels filtres ajouter au panier econology.fr ?",
+    filterClass: { G4: "Filtre G4 – grossier, protège la machine", F7: "Filtre F7 – fin, air neuf", F8: "Filtre F8 – fin, air neuf" },
+    addToCart: "Ajouter au panier",
+    cancel: "Annuler",
+    seeFilters: "Voir la fiche des filtres",
     alarm: "Alarme",
     warning: "Avertissement",
     brand: "Filtres et accessoires sur econology.fr",
@@ -181,6 +212,12 @@ const TEXT = {
     filtersDue: "Filters need replacing",
     filtersSoon: (n) => `Filters need replacing in ${n} day${n > 1 ? "s" : ""}`,
     orderFilters: "Order filters",
+    orderTitle: "Order filters",
+    orderWhich: "Which filters go into the econology.fr cart?",
+    filterClass: { G4: "G4 filter – coarse, protects the unit", F7: "F7 filter – fine, fresh air", F8: "F8 filter – fine, fresh air" },
+    addToCart: "Add to cart",
+    cancel: "Cancel",
+    seeFilters: "See the filters page",
     alarm: "Alarm",
     warning: "Warning",
     brand: "Filters and accessories on econology.fr",
@@ -224,7 +261,22 @@ const STYLE = `
   .notice::before { content: ""; flex: none; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--a21-tone); }
   .notice small { font-size: .75rem; color: var(--secondary-text-color); white-space: nowrap; }
   .notice span { flex: 1; min-width: 12ch; }
-  .notice a { color: var(--primary-text-color); font-weight: 500; text-underline-offset: 3px; }
+  .notice a, .notice button.order { color: var(--primary-text-color); font-weight: 500; text-underline-offset: 3px; }
+  .notice button.order { background: none; border: 0; padding: 0; font: inherit; text-decoration: underline; cursor: pointer; }
+  dialog.cart { border: 0; border-radius: 12px; padding: 20px 22px; max-width: 340px; width: calc(100% - 32px);
+                color: var(--primary-text-color); background: var(--card-background-color, #fff);
+                box-shadow: 0 8px 32px rgba(0,0,0,.3); }
+  dialog.cart::backdrop { background: rgba(0,0,0,.35); }
+  dialog.cart h3 { margin: 0 0 6px; font-size: 1.125rem; font-weight: 500; }
+  dialog.cart p { margin: 0 0 12px; color: var(--secondary-text-color); font-size: .9375rem; }
+  dialog.cart label { display: flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; }
+  dialog.cart input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--a21-green); margin: 0; }
+  dialog.cart .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  dialog.cart .actions button { height: 40px; padding: 0 16px; border-radius: 10px; font: inherit; font-size: .9375rem; cursor: pointer;
+                                border: 1px solid var(--divider-color, #ccc); background: none; color: var(--primary-text-color); }
+  dialog.cart .actions .add { background: var(--a21-green); border-color: var(--a21-green); color: #fff; font-weight: 500; }
+  dialog.cart .actions .add:disabled { opacity: .45; cursor: default; }
+  dialog.cart a { display: inline-block; margin-top: 12px; font-size: .8125rem; color: var(--secondary-text-color); }
   .notice.alarm { --a21-tone: var(--error-color, #db4437); }
   .notice.warning, .notice.filter, .notice.frost { --a21-tone: var(--warning-color, #ffa600); }
 
@@ -376,7 +428,16 @@ const TEMPLATE = `
       <div class="notice alarm" hidden><span></span></div>
       <div class="notice warning" hidden><span></span></div>
       <div class="notice frost" hidden><span></span></div>
-      <div class="notice filter" hidden><span></span><a target="_blank" rel="noopener"></a></div>
+      <div class="notice filter" hidden><span></span><button type="button" class="order" hidden></button></div>
+      <dialog class="cart">
+        <form method="dialog">
+          <h3></h3>
+          <p></p>
+          <div class="choices"></div>
+          <div class="actions"><button type="button" class="cancel"></button><button type="submit" class="add"></button></div>
+          <a target="_blank" rel="noopener"></a>
+        </form>
+      </dialog>
 
       <svg class="unit" viewBox="0 0 400 200" role="img">
         <defs>
@@ -597,9 +658,21 @@ class VentsA21Card extends HTMLElement {
       manual: root.querySelector(".manual"),
       facts: root.querySelector(".facts"),
       brand: root.querySelector(".brand a"),
+      cart: root.querySelector("dialog.cart"),
     };
 
     this._el.power.addEventListener("click", () => this._togglePower());
+    this._el.filter.querySelector("button.order").addEventListener("click", () => this._openCart());
+    const cart = this._el.cart;
+    cart.querySelector(".cancel").addEventListener("click", () => cart.close());
+    cart.querySelector(".choices").addEventListener("change", () => {
+      cart.querySelector(".add").disabled = !cart.querySelector("input:checked");
+    });
+    cart.querySelector("form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      this._orderFilters();
+      cart.close();
+    });
     this._el.speeds.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-mode]");
       if (button) this._setSpeed(button.dataset.mode);
@@ -784,16 +857,10 @@ class VentsA21Card extends HTMLElement {
         filterDue ? text.filtersDue : text.filtersSoon(days);
       // The shop link is opt-in: the reminder alone is shown unless the owner
       // of the dashboard turned "filter_link" on in the card options.
-      const link = this._el.filter.querySelector("a");
-      link.hidden = !this._config.filter_link;
-      if (this._config.filter_link) {
-        const page = FILTERS[device.model];
-        link.textContent = text.orderFilters;
-        link.href = `${SHOP}${page || ""}${UTM}`;
-      } else {
-        link.textContent = "";
-        link.removeAttribute("href");
-      }
+      const button = this._el.filter.querySelector("button.order");
+      button.hidden = !this._config.filter_link;
+      button.textContent = this._config.filter_link ? text.orderFilters : "";
+      this._filtersModel = device.model;
     }
 
     // --- drawing ------------------------------------------------------------
@@ -1093,6 +1160,65 @@ class VentsA21Card extends HTMLElement {
 
   disconnectedCallback() {
     clearTimeout(this._fanTimer);
+  }
+
+  /** Ask which filters to order, both ticked, then put them in the cart. */
+  _openCart() {
+    const text = this._text();
+    const filters = FILTERS[this._filtersModel];
+    const cart = this._el.cart;
+    const link = cart.querySelector("a");
+    link.textContent = text.seeFilters;
+    link.href = `${SHOP}${filters?.page || ""}${UTM}`;
+    if (!filters) {
+      // Unknown model: the shop page is all the card can offer.
+      window.open(link.href, "_blank", "noopener");
+      return;
+    }
+    cart.querySelector("h3").textContent = text.orderTitle;
+    cart.querySelector("p").textContent = text.orderWhich;
+    cart.querySelector(".cancel").textContent = text.cancel;
+    cart.querySelector(".add").textContent = text.addToCart;
+    cart.querySelector(".add").disabled = false;
+    cart.querySelector(".choices").replaceChildren(
+      ...filters.items.map(([cls, sku]) => {
+        const label = document.createElement("label");
+        const box = document.createElement("input");
+        box.type = "checkbox";
+        box.checked = true;
+        box.value = sku;
+        box.dataset.cls = cls;
+        label.append(box, text.filterClass[cls] || cls);
+        return label;
+      }),
+    );
+    cart.showModal();
+  }
+
+  /** POST the ticked filters to the shop, which opens its cart in a new tab. */
+  _orderFilters() {
+    const skus = [...this._el.cart.querySelectorAll("input:checked")].map((box) => box.value);
+    if (!skus.length) return;
+    const form = document.createElement("form");
+    form.method = "post";
+    form.action = CART;
+    form.target = "_blank";
+    form.rel = "noopener";
+    const field = (name, value) => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = name;
+      input.value = value;
+      form.append(input);
+    };
+    field("veqai_ref", CART_REF);
+    skus.forEach((sku, i) => {
+      field(`items[${i}][sku]`, sku);
+      field(`items[${i}][qty]`, "1");
+    });
+    this.shadowRoot.append(form);
+    form.submit();
+    form.remove();
   }
 
   _togglePower() {
