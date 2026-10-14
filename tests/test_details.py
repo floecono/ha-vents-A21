@@ -214,6 +214,19 @@ async def test_bypass_and_rotor(
     assert "2,4 °C d'écart, il en faut 4 °C" in row["hint"]
     simulator.set_temperature(1, 6.3)
 
+    # Regulating on the supply air: the bypass then follows the air blown in,
+    # not the room, and the card says so next to the controlled temperature.
+    simulator.set_holding(53, 2)
+    await entry.runtime_data.async_refresh()
+    temps = section((await client.receive_json())["event"], "temps")
+    control = next(r for r in temps["rows"] if r["label"] == "Température régulée")
+    assert "choisissez l'air extrait" in control["hint"]
+    simulator.set_holding(53, 0)
+    await entry.runtime_data.async_refresh()
+    temps = section((await client.receive_json())["event"], "temps")
+    control = next(r for r in temps["rows"] if r["label"] == "Température régulée")
+    assert control["hint"] == "sur l'air extrait"
+
     simulator.set_holding(57, 4)  # modulating rotary exchanger
     simulator.set_input(51, 40)
     simulator.set_input(45, 40)

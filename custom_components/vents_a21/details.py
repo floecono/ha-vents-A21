@@ -191,6 +191,10 @@ _T: dict[str, dict[str, str]] = {
         "t_control_0": "sur l'air extrait",
         "t_control_1": "sur le boîtier de commande",
         "t_control_2": "sur l'air soufflé",
+        "t_control_supply": (
+            "Avec la sonde sur l'air soufflé, le bypass régule l'air soufflé, pas la"
+            " pièce. Pour rafraîchir la maison la nuit, choisissez l'air extrait."
+        ),
         "t_supply_setpoint": "Consigne de soufflage calculée",
         # air quality
         "rh": "Humidité",
@@ -357,6 +361,10 @@ _T: dict[str, dict[str, str]] = {
         "t_control_0": "on the extract air",
         "t_control_1": "on the control panel",
         "t_control_2": "on the supply air",
+        "t_control_supply": (
+            "With the sensor on the supply air, the bypass regulates the air blown"
+            " in, not the room. To cool the house at night, choose the extract air."
+        ),
         "t_supply_setpoint": "Calculated supply setpoint",
         "rh": "Humidity",
         "rh_ext": "Humidity, external sensor",
@@ -703,6 +711,11 @@ def _temperatures(b: _Builder) -> None:
             b.choice("t_control", data.hr(HR_TEMP_SENSOR)),
         ),
     ]
+    if data.hr(HR_TEMP_SENSOR) == 2 and data.hr(HR_BYPASS_TYPE):
+        # Regulating on the supply air means the bypass is driven by the
+        # temperature blown in, not by the room: free cooling then stops as
+        # soon as the supply reaches the setpoint.
+        rows[-1]["hint"] = f"{rows[-1]['hint']}. {b.text['t_control_supply']}"
     supply_setpoint = data.ir(IR_SUPPLY_SETPOINT)
     if supply_setpoint and (data.hr(HR_MAIN_HEATER_TYPE) or data.hr(HR_COOLER_TYPE)):
         rows.append(b.row("t_supply_setpoint", b.value(supply_setpoint / 10, "°C", 1)))
