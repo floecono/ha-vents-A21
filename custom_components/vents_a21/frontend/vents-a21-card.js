@@ -132,10 +132,16 @@ const TEXT = {
     orderFilters: "Commander les filtres",
     orderTitle: "Commander les filtres",
     orderWhich: "Quels filtres ajouter au panier econology.fr ?",
+    orderHint: (changes, interval) =>
+      `Proposé : un an de filtres, soit ${changes} changement${changes > 1 ? "s" : ""} (intervalle de ${interval} jours), moins ce qui est en stock.`,
     filterClass: { G4: "Filtre G4 – grossier, protège la machine", F7: "Filtre F7 – fin, air neuf", F8: "Filtre F8 – fin, air neuf" },
     addToCart: "Ajouter au panier",
     cancel: "Annuler",
     seeFilters: "Voir la fiche des filtres",
+    inStock: (list) => `en stock : ${list}`,
+    noSpares: "Plus de filtres de rechange en réserve",
+    onOrder: (list) => `Commande en cours : ${list}`,
+    received: "Reçus",
     alarm: "Alarme",
     warning: "Avertissement",
     brand: "Filtres et accessoires sur econology.fr",
@@ -214,10 +220,16 @@ const TEXT = {
     orderFilters: "Order filters",
     orderTitle: "Order filters",
     orderWhich: "Which filters go into the econology.fr cart?",
+    orderHint: (changes, interval) =>
+      `Suggested: a year of filters, ${changes} change${changes > 1 ? "s" : ""} (${interval}-day interval), less what is in stock.`,
     filterClass: { G4: "G4 filter – coarse, protects the unit", F7: "F7 filter – fine, fresh air", F8: "F8 filter – fine, fresh air" },
     addToCart: "Add to cart",
     cancel: "Cancel",
     seeFilters: "See the filters page",
+    inStock: (list) => `in stock: ${list}`,
+    noSpares: "No spare filters left",
+    onOrder: (list) => `On order: ${list}`,
+    received: "Received",
     alarm: "Alarm",
     warning: "Warning",
     brand: "Filters and accessories on econology.fr",
@@ -262,7 +274,9 @@ const STYLE = `
   .notice small { font-size: .75rem; color: var(--secondary-text-color); white-space: nowrap; }
   .notice span { flex: 1; min-width: 12ch; }
   .notice a, .notice button.order { color: var(--primary-text-color); font-weight: 500; text-underline-offset: 3px; }
-  .notice button.order { background: none; border: 0; padding: 0; font: inherit; text-decoration: underline; cursor: pointer; }
+  .notice button.order, .notice button.received { background: none; border: 0; padding: 0; font: inherit; font-weight: 500;
+                  color: var(--primary-text-color); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+  .notice span small { display: block; font-size: .8125rem; color: var(--secondary-text-color); white-space: normal; }
   dialog.cart { border: 0; border-radius: 12px; padding: 20px 22px; max-width: 340px; width: calc(100% - 32px);
                 color: var(--primary-text-color); background: var(--card-background-color, #fff);
                 box-shadow: 0 8px 32px rgba(0,0,0,.3); }
@@ -270,6 +284,12 @@ const STYLE = `
   dialog.cart h3 { margin: 0 0 6px; font-size: 1.125rem; font-weight: 500; }
   dialog.cart p { margin: 0 0 12px; color: var(--secondary-text-color); font-size: .9375rem; }
   dialog.cart label { display: flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; }
+  dialog.cart label span { flex: 1; }
+  dialog.cart .qty { display: inline-flex; flex: none; align-items: center; border: 1px solid var(--divider-color, #ccc); border-radius: 8px; }
+  dialog.cart .qty button { width: 30px; height: 30px; border: 0; background: none; color: var(--primary-text-color); font: inherit; font-size: 1.125rem; cursor: pointer; }
+  dialog.cart .qty output { min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; }
+  dialog.cart label:has(input:not(:checked)) .qty { opacity: .35; pointer-events: none; }
+  dialog.cart .hint { margin: 6px 0 0; font-size: .8125rem; }
   dialog.cart input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--a21-green); margin: 0; }
   dialog.cart .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
   dialog.cart .actions button { height: 40px; padding: 0 16px; border-radius: 10px; font: inherit; font-size: .9375rem; cursor: pointer;
@@ -428,12 +448,13 @@ const TEMPLATE = `
       <div class="notice alarm" hidden><span></span></div>
       <div class="notice warning" hidden><span></span></div>
       <div class="notice frost" hidden><span></span></div>
-      <div class="notice filter" hidden><span></span><button type="button" class="order" hidden></button></div>
+      <div class="notice filter" hidden><span></span><button type="button" class="order" hidden></button><button type="button" class="received" hidden></button></div>
       <dialog class="cart">
         <form method="dialog">
           <h3></h3>
           <p></p>
           <div class="choices"></div>
+          <p class="hint"></p>
           <div class="actions"><button type="button" class="cancel"></button><button type="submit" class="add"></button></div>
           <a target="_blank" rel="noopener"></a>
         </form>
@@ -538,6 +559,10 @@ const SOURCES = {
   timer: "switch.timer",
   schedule: "switch.weekly_schedule",
   manualSpeed: "number.manual_speed",
+  stockCoarse: "number.filters_coarse_stock",
+  stockFine: "number.filters_fine_stock",
+  filterSupply: "select.filters_supply",
+  filterInterval: "number.filter_interval",
 };
 
 function devicesOf(hass) {
@@ -546,6 +571,11 @@ function devicesOf(hass) {
     if (entity.platform === DOMAIN && entity.device_id) ids.add(entity.device_id);
   }
   return [...ids];
+}
+
+/** True when the integration says what a replacement uses (stock entities present). */
+function coarseOrFineKnown(spares) {
+  return spares.perChange.some((n) => n > 0);
 }
 
 function number(stateObj) {
@@ -663,10 +693,18 @@ class VentsA21Card extends HTMLElement {
 
     this._el.power.addEventListener("click", () => this._togglePower());
     this._el.filter.querySelector("button.order").addEventListener("click", () => this._openCart());
+    this._el.filter.querySelector("button.received").addEventListener("click", () => this._filtersReceived());
     const cart = this._el.cart;
     cart.querySelector(".cancel").addEventListener("click", () => cart.close());
     cart.querySelector(".choices").addEventListener("change", () => {
       cart.querySelector(".add").disabled = !cart.querySelector("input:checked");
+    });
+    cart.querySelector(".choices").addEventListener("click", (event) => {
+      const step = event.target.closest("button[data-step]");
+      if (!step) return;
+      event.preventDefault();
+      const output = step.parentElement.querySelector("output");
+      output.value = String(Math.min(99, Math.max(1, Number(output.value) + Number(step.dataset.step))));
     });
     cart.querySelector("form").addEventListener("submit", (event) => {
       event.preventDefault();
@@ -754,6 +792,9 @@ class VentsA21Card extends HTMLElement {
             a.frost_protection,
             a.command,
             a.fan_targets,
+            a.ordered,
+            a.per_change,
+            a.tracking,
           ]
         );
       }),
@@ -851,16 +892,38 @@ class VentsA21Card extends HTMLElement {
         ? FILTER_SOON_DAYS
         : Math.min(Math.max(Math.round(configured), 0), FILTER_SOON_MAX);
     const filterSoon = !filterDue && days !== null && days <= soonDays;
-    this._el.filter.hidden = !(filterDue || filterSoon);
-    if (filterDue || filterSoon) {
-      this._el.filter.querySelector("span").textContent =
-        filterDue ? text.filtersDue : text.filtersSoon(days);
+    // Spare filters at home (kept by the integration): what is in stock,
+    // what one replacement uses, what is on order.
+    const spares = this._spares(state);
+    this._filtersModel = device.model;
+    const lowStock = spares.tracking && !spares.enough;
+    const onOrder = spares.ordered.some((n) => n > 0);
+    const showFilter = filterDue || filterSoon || onOrder || (lowStock && this._config.filter_link);
+    this._el.filter.hidden = !showFilter;
+    if (showFilter) {
+      const span = this._el.filter.querySelector("span");
+      const line = filterDue ? text.filtersDue : filterSoon ? text.filtersSoon(days) : lowStock ? text.noSpares : "";
+      span.replaceChildren(line);
+      const list = (counts) => spares.names.map((name, i) => `${counts[i]} ${name}`).filter((_, i) => counts[i] > 0).join(" + ");
+      const details = [];
+      if ((filterDue || filterSoon) && spares.tracking && spares.enough) details.push(text.inStock(list(spares.stock)));
+      else if ((filterDue || filterSoon) && lowStock) details.push(text.noSpares);
+      if (onOrder) details.push(text.onOrder(list(spares.ordered)));
+      if (details.length) {
+        const small = document.createElement("small");
+        small.textContent = details.join(" · ");
+        span.append(small);
+      }
       // The shop link is opt-in: the reminder alone is shown unless the owner
-      // of the dashboard turned "filter_link" on in the card options.
-      const button = this._el.filter.querySelector("button.order");
-      button.hidden = !this._config.filter_link;
-      button.textContent = this._config.filter_link ? text.orderFilters : "";
-      this._filtersModel = device.model;
+      // of the dashboard turned "filter_link" on in the card options. With
+      // enough spares at home there is nothing to order.
+      const order = this._el.filter.querySelector("button.order");
+      const showOrder = Boolean(this._config.filter_link) && !(spares.tracking && spares.enough) && !onOrder;
+      order.hidden = !showOrder;
+      order.textContent = showOrder ? text.orderFilters : "";
+      const received = this._el.filter.querySelector("button.received");
+      received.hidden = !onOrder;
+      received.textContent = onOrder ? text.received : "";
     }
 
     // --- drawing ------------------------------------------------------------
@@ -1163,6 +1226,29 @@ class VentsA21Card extends HTMLElement {
   }
 
   /** Ask which filters to order, both ticked, then put them in the cart. */
+  /**
+   * The spare filters of the unit, from the two stock numbers: coarse
+   * (extract side) first, fine second. Without them (older integration),
+   * nothing is tracked and the card behaves as before.
+   */
+  _spares(state) {
+    const coarse = state("stockCoarse");
+    const fine = state("stockFine");
+    const entities = [coarse, fine];
+    const stock = entities.map((e) => number(e) ?? 0);
+    const perChange = entities.map((e) => Number(e?.attributes.per_change ?? 0));
+    const names = entities.map((e, i) => e?.attributes.filter_class || ["G4", "F7"][i]);
+    return {
+      tracking: Boolean(coarse?.attributes.tracking),
+      stock,
+      perChange,
+      names,
+      ordered: entities.map((e) => Number(e?.attributes.ordered ?? 0)),
+      enough: stock.every((n, i) => n >= perChange[i]),
+      interval: number(state("filterInterval")),
+    };
+  }
+
   _openCart() {
     const text = this._text();
     const filters = FILTERS[this._filtersModel];
@@ -1175,30 +1261,68 @@ class VentsA21Card extends HTMLElement {
       window.open(link.href, "_blank", "noopener");
       return;
     }
+    const ids = this._ids;
+    const state = (key) => (ids[key] ? this._hass.states[ids[key]] : undefined);
+    const spares = this._spares(state);
+    // A year of filters, less what is already at home, is a sensible lot:
+    // one delivery for the year. Each class defaults to what the supply
+    // setting says a replacement uses.
+    const interval = spares.interval && spares.interval > 0 ? spares.interval : 90;
+    const changes = Math.max(1, Math.round(365 / interval));
     cart.querySelector("h3").textContent = text.orderTitle;
     cart.querySelector("p").textContent = text.orderWhich;
+    cart.querySelector(".hint").textContent = text.orderHint(changes, interval);
     cart.querySelector(".cancel").textContent = text.cancel;
     cart.querySelector(".add").textContent = text.addToCart;
     cart.querySelector(".add").disabled = false;
     cart.querySelector(".choices").replaceChildren(
-      ...filters.items.map(([cls, sku]) => {
+      ...filters.items.map(([cls, sku], i) => {
+        const perChange = spares.perChange[i] || (i === 0 ? 1 : 0);
+        const wanted = Math.max(1, perChange * changes - spares.stock[i]);
         const label = document.createElement("label");
         const box = document.createElement("input");
         box.type = "checkbox";
-        box.checked = true;
+        box.checked = perChange > 0 || !coarseOrFineKnown(spares);
         box.value = sku;
         box.dataset.cls = cls;
-        label.append(box, text.filterClass[cls] || cls);
+        box.dataset.index = String(i);
+        const name = document.createElement("span");
+        name.textContent = text.filterClass[cls] || cls;
+        const qty = document.createElement("span");
+        qty.className = "qty";
+        const minus = document.createElement("button");
+        minus.type = "button";
+        minus.dataset.step = "-1";
+        minus.textContent = "−";
+        const output = document.createElement("output");
+        output.value = String(wanted);
+        const plus = document.createElement("button");
+        plus.type = "button";
+        plus.dataset.step = "1";
+        plus.textContent = "+";
+        qty.append(minus, output, plus);
+        label.append(box, name, qty);
         return label;
       }),
     );
     cart.showModal();
   }
 
+  /** The order arrived: move it into the stock. */
+  _filtersReceived() {
+    const deviceId = this._config.device_id || devicesOf(this._hass)[0];
+    if (!deviceId) return;
+    this._hass.callService(DOMAIN, "filters_received", { device_id: deviceId });
+  }
+
   /** POST the ticked filters to the shop, which opens its cart in a new tab. */
   _orderFilters() {
-    const skus = [...this._el.cart.querySelectorAll("input:checked")].map((box) => box.value);
-    if (!skus.length) return;
+    const picked = [...this._el.cart.querySelectorAll("input:checked")].map((box) => ({
+      sku: box.value,
+      index: Number(box.dataset.index),
+      qty: Math.max(1, Number(box.closest("label").querySelector("output").value) || 1),
+    }));
+    if (!picked.length) return;
     const form = document.createElement("form");
     form.method = "post";
     form.action = CART;
@@ -1212,13 +1336,20 @@ class VentsA21Card extends HTMLElement {
       form.append(input);
     };
     field("veqai_ref", CART_REF);
-    skus.forEach((sku, i) => {
+    picked.forEach(({ sku, qty }, i) => {
       field(`items[${i}][sku]`, sku);
-      field(`items[${i}][qty]`, "1");
+      field(`items[${i}][qty]`, String(qty));
     });
     this.shadowRoot.append(form);
     form.submit();
     form.remove();
+    // Remember the order until it is received, so the stock follows.
+    const deviceId = this._config.device_id || devicesOf(this._hass)[0];
+    if (deviceId && this._ids.stockCoarse) {
+      const counts = { coarse: 0, fine: 0 };
+      for (const { index, qty } of picked) counts[index === 0 ? "coarse" : "fine"] += qty;
+      this._hass.callService(DOMAIN, "filters_ordered", { device_id: deviceId, ...counts });
+    }
   }
 
   _togglePower() {

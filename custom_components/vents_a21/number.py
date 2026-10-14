@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
 
 from homeassistant.components.number import (
     NumberDeviceClass,
@@ -66,6 +67,7 @@ from .const import (
 )
 from .coordinator import A21ConfigEntry, A21Coordinator
 from .entity import A21Entity
+from .filters import CLASSES
 
 # Holding registers only used here.
 HR_BLOWING_SPEED = 18
@@ -558,11 +560,65 @@ async def async_setup_entry(
     """Set up the numbers this unit has."""
     coordinator = entry.runtime_data
     async_add_entities(
-        A21Number(coordinator, description)
-        for description in NUMBERS
-        if coordinator.data.hr(description.register) is not None
-        and description.exists_fn(coordinator.data)
+        [
+            *(
+                A21Number(coordinator, description)
+                for description in NUMBERS
+                if coordinator.data.hr(description.register) is not None
+                and description.exists_fn(coordinator.data)
+            ),
+            *(A21FilterStockNumber(coordinator, cls) for cls in CLASSES),
+        ]
     )
+
+
+class A21FilterStockNumber(A21Entity, NumberEntity):
+    """How many spare filters of one class are at home.
+
+    Kept by Home Assistant, not by the controller: the stock goes down when
+    the filter timer of the unit restarts, up when an order is received
+    (vents_a21.filters_received), and can be corrected here by hand.
+    """
+
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_native_min_value = 0
+    _attr_native_max_value = 99
+    _attr_native_step = 1
+    _attr_mode = NumberMode.BOX
+    _attr_icon = "mdi:air-filter"
+
+    def __init__(self, coordinator: A21Coordinator, cls: str) -> None:
+        """Initialise the stock of one filter class."""
+        super().__init__(coordinator, f"filters_{cls}_stock")
+        self._cls = cls
+        self._attr_translation_placeholders = {"cls": coordinator.filters.names[cls]}
+
+    async def async_added_to_hass(self) -> None:
+        """Follow the stock."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self.coordinator.filters.async_add_listener(self.async_write_ha_state)
+        )
+
+    @property
+    def native_value(self) -> float:
+        """Return the number of spare filters."""
+        return self.coordinator.filters.stock[self._cls]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Tell the card what is on order and what a replacement uses."""
+        stock = self.coordinator.filters
+        return {
+            "filter_class": stock.names[self._cls],
+            "ordered": stock.ordered[self._cls],
+            "per_change": stock.per_change[self._cls],
+            "tracking": stock.tracking,
+        }
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Correct the stock by hand."""
+        self.coordinator.filters.set_stock(self._cls, int(value))
 
 
 class A21Number(A21Entity, NumberEntity):

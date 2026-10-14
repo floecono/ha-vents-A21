@@ -94,6 +94,9 @@
     },
     "write_failed": {
       "message": "La commande n'a pas pu être envoyée à la machine : {error}"
+    },
+    "unknown_device": {
+      "message": "Cette machine n'est pas une VMC gérée par l'intégration."
     }
   },
   "entity": {
@@ -495,6 +498,14 @@
           "manual": "Manuelle",
           "auto": "Automatique"
         }
+      },
+      "filters_supply": {
+        "name": "Filtres air neuf",
+        "state": {
+          "coarse": "G4 (grossier)",
+          "fine": "F7 (fin)",
+          "both": "G4 + F7"
+        }
       }
     },
     "number": {
@@ -653,6 +664,42 @@
       },
       "pid_water": {
         "name": "Régulateur du retour d'eau : {coefficient}"
+      },
+      "filters_coarse_stock": {
+        "name": "Filtres {cls} en stock"
+      },
+      "filters_fine_stock": {
+        "name": "Filtres {cls} en stock"
+      }
+    }
+  },
+  "services": {
+    "filters_ordered": {
+      "name": "Filtres commandés",
+      "description": "Note des filtres mis au panier de la boutique, en attente de réception (la tuile l'appelle d'elle-même).",
+      "fields": {
+        "device_id": {
+          "name": "Machine",
+          "description": "La VMC concernée."
+        },
+        "coarse": {
+          "name": "Filtres grossiers (G4)",
+          "description": "Nombre commandé."
+        },
+        "fine": {
+          "name": "Filtres fins (F7)",
+          "description": "Nombre commandé."
+        }
+      }
+    },
+    "filters_received": {
+      "name": "Filtres reçus",
+      "description": "Ajoute au stock les filtres en attente de réception.",
+      "fields": {
+        "device_id": {
+          "name": "Machine",
+          "description": "La VMC concernée."
+        }
       }
     }
   }

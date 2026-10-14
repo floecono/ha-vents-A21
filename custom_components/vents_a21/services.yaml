@@ -1,0 +1,29 @@
+filters_ordered:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: vents_a21
+    coarse:
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 99
+          mode: box
+    fine:
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 99
+          mode: box
+
+filters_received:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: vents_a21

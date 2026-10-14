@@ -23,11 +23,13 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_UNIT_ID,
     DOMAIN,
+    IR_FILTER_DAYS,
     MANUAL_BYPASS_CODES,
     MODEL_GENERIC,
     MODELS,
     Model,
 )
+from .filters import FilterStock
 from .modbus import ModbusError, ModbusExceptionResponse
 
 _LOGGER = logging.getLogger(__name__)
@@ -76,6 +78,9 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         # unit is unloaded so they can subscribe again.
         self.detail_watchers: set[Callable[[], None]] = set()
         self.failed_polls = 0
+        # Spare filters at home; loaded by async_setup_entry.
+        self.filters = FilterStock(hass, entry.entry_id, self.model)
+        self._filter_days: int | None = None
 
     @property
     def device_name(self) -> str:
@@ -123,6 +128,7 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
                 return self.data
             raise UpdateFailed(str(err)) from err
         self.failed_polls = 0
+        self._track_filter_change(data)
         return data
 
     async def _poll_twice(self) -> A21Data:
@@ -149,7 +155,21 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
                 translation_key="write_failed",
                 translation_placeholders={"error": str(err)},
             ) from err
+        self._track_filter_change(data)
         self.async_set_updated_data(data)
+
+    @callback
+    def _track_filter_change(self, data: A21Data) -> None:
+        """Take a set out of the spare filters when the filter timer restarts.
+
+        The timer counts down; it only goes up when the filters were replaced
+        and the counter reset, from wherever that was done.
+        """
+        days = data.ir(IR_FILTER_DAYS)
+        previous, self._filter_days = self._filter_days, days
+        if previous is not None and days is not None and days > previous + 1:
+            _LOGGER.debug("Filter timer restarted (%s -> %s days)", previous, days)
+            self.filters.consume()
 
     async def async_write_coil(self, address: int, value: bool) -> None:
         """Write one coil."""

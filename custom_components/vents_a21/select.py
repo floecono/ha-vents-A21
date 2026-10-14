@@ -23,6 +23,7 @@ from .const import (
 )
 from .coordinator import A21ConfigEntry, A21Coordinator
 from .entity import A21Entity
+from .filters import SUPPLY_OPTIONS
 
 # Holding registers only used here.
 HR_HEATER_MODE = 68
@@ -135,11 +136,50 @@ async def async_setup_entry(
     """Set up the selects this unit has."""
     coordinator = entry.runtime_data
     async_add_entities(
-        A21Select(coordinator, description)
-        for description in SELECTS
-        if coordinator.data.hr(description.register) is not None
-        and description.exists_fn(coordinator.data)
+        [
+            *(
+                A21Select(coordinator, description)
+                for description in SELECTS
+                if coordinator.data.hr(description.register) is not None
+                and description.exists_fn(coordinator.data)
+            ),
+            A21FilterSupplySelect(coordinator),
+        ]
     )
+
+
+class A21FilterSupplySelect(A21Entity, SelectEntity):
+    """What the fresh-air side of the unit is fitted with.
+
+    The extract side always takes the coarse filter; the supply side takes
+    a coarse one, a fine one, or both (a coarse pre-filter in front of the
+    fine one), depending on the unit and what the owner chose. It decides
+    what a replacement takes out of the spare filters.
+    """
+
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_icon = "mdi:air-filter"
+    _attr_options = SUPPLY_OPTIONS
+
+    def __init__(self, coordinator: A21Coordinator) -> None:
+        """Initialise the choice."""
+        super().__init__(coordinator, "filters_supply")
+
+    async def async_added_to_hass(self) -> None:
+        """Follow the stock."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self.coordinator.filters.async_add_listener(self.async_write_ha_state)
+        )
+
+    @property
+    def current_option(self) -> str:
+        """Return the fitting."""
+        return self.coordinator.filters.supply
+
+    async def async_select_option(self, option: str) -> None:
+        """Store the fitting."""
+        self.coordinator.filters.set_supply(option)
 
 
 class A21Select(A21Entity, SelectEntity):

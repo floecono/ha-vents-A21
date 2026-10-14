@@ -16,7 +16,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.loader import async_get_integration
 
-from . import websocket
+from . import services, websocket
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 from .coordinator import A21ConfigEntry, A21Coordinator, ignored_codes
 
@@ -51,6 +51,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     if not await _async_register_resource(hass, url):
         add_extra_js_url(hass, url)
     websocket.async_register(hass)
+    services.async_register(hass)
     return True
 
 
@@ -85,6 +86,7 @@ async def _async_register_resource(hass: HomeAssistant, url: str) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: A21ConfigEntry) -> bool:
     """Set up one ventilation unit."""
     coordinator = A21Coordinator(hass, entry)
+    await coordinator.filters.async_load()
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
 

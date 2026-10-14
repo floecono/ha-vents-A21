@@ -94,6 +94,9 @@
     },
     "write_failed": {
       "message": "The command could not be sent to the unit: {error}"
+    },
+    "unknown_device": {
+      "message": "This device is not a unit of this integration."
     }
   },
   "entity": {
@@ -495,6 +498,14 @@
           "manual": "Manual",
           "auto": "Automatic"
         }
+      },
+      "filters_supply": {
+        "name": "Fresh-air filters",
+        "state": {
+          "coarse": "G4 (coarse)",
+          "fine": "F7 (fine)",
+          "both": "G4 + F7"
+        }
       }
     },
     "number": {
@@ -653,6 +664,42 @@
       },
       "pid_water": {
         "name": "Return water regulator: {coefficient}"
+      },
+      "filters_coarse_stock": {
+        "name": "{cls} filters in stock"
+      },
+      "filters_fine_stock": {
+        "name": "{cls} filters in stock"
+      }
+    }
+  },
+  "services": {
+    "filters_ordered": {
+      "name": "Filters ordered",
+      "description": "Records filters put in the shop's cart, awaiting delivery (the card calls this itself).",
+      "fields": {
+        "device_id": {
+          "name": "Unit",
+          "description": "The ventilation unit."
+        },
+        "coarse": {
+          "name": "Coarse filters (G4)",
+          "description": "Number ordered."
+        },
+        "fine": {
+          "name": "Fine filters (F7)",
+          "description": "Number ordered."
+        }
+      }
+    },
+    "filters_received": {
+      "name": "Filters received",
+      "description": "Moves the filters awaiting delivery into the stock.",
+      "fields": {
+        "device_id": {
+          "name": "Unit",
+          "description": "The ventilation unit."
+        }
       }
     }
   }

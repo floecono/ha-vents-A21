@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -166,3 +167,54 @@ async def test_write_refused(
             entity_id=f"select.{PREFIX}_bypass_mode",
             option="open",
         )
+
+
+async def test_spare_filters(
+    hass: HomeAssistant, simulator: A21Simulator, entry: MockConfigEntry
+) -> None:
+    """The stock of spare filters follows orders, deliveries and replacements."""
+    coarse = f"number.{PREFIX}_g4_filters_in_stock"
+    fine = f"number.{PREFIX}_f7_filters_in_stock"
+    supply = f"select.{PREFIX}_fresh_air_filters"
+    assert hass.states.get(coarse).state == "0"
+    assert hass.states.get(supply).state == "fine"
+    # By default a replacement takes a G4 on extract and an F7 on supply.
+    assert hass.states.get(coarse).attributes["per_change"] == 1
+    assert hass.states.get(fine).attributes["per_change"] == 1
+
+    device = dr.async_get(hass).async_get_device({("vents_a21", entry.entry_id)})
+    assert device is not None
+    await call(hass, "vents_a21", "filters_ordered", device_id=device.id, coarse=4, fine=4)
+    assert hass.states.get(coarse).attributes["ordered"] == 4
+    assert hass.states.get(coarse).state == "0"
+    await call(hass, "vents_a21", "filters_received", device_id=device.id)
+    assert hass.states.get(coarse).attributes["ordered"] == 0
+    assert hass.states.get(coarse).state == "4"
+    assert hass.states.get(fine).state == "4"
+
+    # The filters are replaced: the timer of the unit restarts, from
+    # wherever the reset was done, and one set leaves the stock.
+    coordinator = entry.runtime_data
+    simulator.set_input(28, 3)
+    await coordinator.async_refresh()
+    await call(hass, "button", "press", entity_id=f"button.{PREFIX}_reset_filter_timer")
+    simulator.set_input(28, 90)
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(coarse).state == "3"
+    assert hass.states.get(fine).state == "3"
+
+    # With a coarse pre-filter in front of the fine one, two G4 go each time.
+    await call(hass, "select", "select_option", entity_id=supply, option="both")
+    assert hass.states.get(coarse).attributes["per_change"] == 2
+    simulator.set_input(28, 5)
+    await coordinator.async_refresh()
+    simulator.set_input(28, 90)
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(coarse).state == "1"
+    assert hass.states.get(fine).state == "2"
+
+    # Corrected by hand.
+    await call(hass, "number", "set_value", entity_id=coarse, value=6)
+    assert hass.states.get(coarse).state == "6"
