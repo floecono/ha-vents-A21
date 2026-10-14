@@ -19,7 +19,10 @@ const SHOP = "https://www.econology.fr/";
 
 // Where "order filters" puts the chosen filters in the shop's cart (POST
 // only; the shop then opens the cart). The reference tells the shop the
-// cart came from Home Assistant.
+// cart came from Home Assistant, from which model, and from which unit:
+// the controller has no serial number on Modbus, so the unit is told
+// apart by the identifier Home Assistant gave it when it was added, the
+// same for every order of that unit as long as it stays installed.
 const CART = `${SHOP}veqai/cart`;
 const CART_REF = "home_assistant";
 
@@ -1315,6 +1318,18 @@ class VentsA21Card extends HTMLElement {
     this._hass.callService(DOMAIN, "filters_received", { device_id: deviceId });
   }
 
+  /** home_assistant_<model>_<unit id>, e.g. home_assistant_zephyr-240-s-connect_1f3a9c0d2e4b. */
+  _cartReference() {
+    const deviceId = this._config.device_id || devicesOf(this._hass)[0];
+    const device = this._hass.devices?.[deviceId];
+    const model = (device?.model || this._filtersModel || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    const entry = device?.primary_config_entry || device?.config_entries?.[0] || deviceId || "";
+    return [CART_REF, model, String(entry).slice(0, 12)].filter(Boolean).join("_");
+  }
+
   /** POST the ticked filters to the shop, which opens its cart in a new tab. */
   _orderFilters() {
     const picked = [...this._el.cart.querySelectorAll("input:checked")].map((box) => ({
@@ -1335,7 +1350,7 @@ class VentsA21Card extends HTMLElement {
       input.value = value;
       form.append(input);
     };
-    field("veqai_ref", CART_REF);
+    field("veqai_ref", this._cartReference());
     picked.forEach(({ sku, qty }, i) => {
       field(`items[${i}][sku]`, sku);
       field(`items[${i}][qty]`, String(qty));

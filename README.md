@@ -153,7 +153,7 @@ Avec plusieurs machines, précisez `device_id` (l'éditeur de la carte propose l
 La tuile principale affiche un rappel quand les filtres arrivent à échéance. Deux options se règlent dans l'éditeur de la tuile, ou en YAML :
 
 - **`filter_reminder_days`** : nombre de jours avant l'échéance à partir duquel le rappel s'affiche. 21 par défaut ; avec 0, il n'apparaît qu'une fois l'échéance atteinte.
-- **`filter_link`** : ajoute au rappel un bouton **Commander les filtres**. Il demande quels filtres vous voulez et en quelle quantité, puis les met directement dans votre panier sur econology.fr, dans un nouvel onglet : il ne reste qu'à valider. La commande est repérée comme venant de Home Assistant. Désactivé par défaut.
+- **`filter_link`** : ajoute au rappel un bouton **Commander les filtres**. Il demande quels filtres vous voulez et en quelle quantité, puis les met directement dans votre panier sur econology.fr, dans un nouvel onglet : il ne reste qu'à valider. La commande est repérée comme venant de Home Assistant, avec le modèle et un identifiant propre à votre machine (celui que Home Assistant lui a donné : l'automate n'expose pas de numéro de série en Modbus). Désactivé par défaut.
 
 #### Filtres de rechange : la réserve
 
