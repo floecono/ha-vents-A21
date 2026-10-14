@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import Callable
 from datetime import timedelta
@@ -30,6 +31,13 @@ from .const import (
 from .modbus import ModbusError, ModbusExceptionResponse
 
 _LOGGER = logging.getLogger(__name__)
+
+# A poll that fails is tried once more after this delay, and the last values
+# are kept through this many consecutive failed polls before the unit is
+# shown as unavailable. A lost packet on Wi-Fi, or a controller busy for a
+# moment, should not blank the dashboard and trip automations.
+RETRY_DELAY = 1.0
+TOLERATED_FAILURES = 3
 
 type A21ConfigEntry = ConfigEntry[A21Coordinator]
 
@@ -67,6 +75,7 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         # Callbacks of the dashboard cards following this unit, told when the
         # unit is unloaded so they can subscribe again.
         self.detail_watchers: set[Callable[[], None]] = set()
+        self.failed_polls = 0
 
     @property
     def device_name(self) -> str:
@@ -101,9 +110,28 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
 
     async def _async_update_data(self) -> A21Data:
         try:
+            data = await self._poll_twice()
+        except ModbusError as err:
+            self.failed_polls += 1
+            if self.data is not None and self.failed_polls < TOLERATED_FAILURES:
+                _LOGGER.debug(
+                    "Poll %d/%d failed, keeping the last values: %s",
+                    self.failed_polls,
+                    TOLERATED_FAILURES,
+                    err,
+                )
+                return self.data
+            raise UpdateFailed(str(err)) from err
+        self.failed_polls = 0
+        return data
+
+    async def _poll_twice(self) -> A21Data:
+        try:
             return await self.api.async_poll()
         except ModbusError as err:
-            raise UpdateFailed(str(err)) from err
+            _LOGGER.debug("Poll failed, trying again in %ss: %s", RETRY_DELAY, err)
+            await asyncio.sleep(RETRY_DELAY)
+            return await self.api.async_poll()
 
     async def async_write(self, *writes: Write) -> None:
         """Write to the controller and publish the state read back."""

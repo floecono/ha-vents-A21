@@ -11,6 +11,7 @@ from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.vents_a21.const import DOMAIN
+from custom_components.vents_a21.coordinator import TOLERATED_FAILURES
 
 from .conftest import make_entry, setup_entry
 from .simulator import A21Simulator
@@ -172,6 +173,12 @@ async def test_unavailable_then_back(
     """Entities go unavailable when the unit is off the network, then recover."""
     port = simulator.port
     await simulator.stop()
+    # The last values are kept through a few failed polls (a lost packet on
+    # Wi-Fi must not blank the dashboard), then the unit goes unavailable.
+    for _ in range(TOLERATED_FAILURES - 1):
+        await entry.runtime_data.async_refresh()
+        await hass.async_block_till_done()
+        assert hass.states.get(CLIMATE).state == "auto"
     await entry.runtime_data.async_refresh()
     await hass.async_block_till_done()
     assert hass.states.get(CLIMATE).state == STATE_UNAVAILABLE

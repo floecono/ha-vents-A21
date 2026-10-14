@@ -8,6 +8,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 
 from custom_components.vents_a21.alarms import CODES
+from custom_components.vents_a21.coordinator import TOLERATED_FAILURES
 
 from .simulator import A21Simulator
 
@@ -236,6 +237,11 @@ async def test_feed_follows_the_unit(
 
     port = simulator.port
     await simulator.stop()
+    # The last values survive a few failed polls before the unit is reported
+    # unavailable (see TOLERATED_FAILURES).
+    for _ in range(TOLERATED_FAILURES - 1):
+        await entry.runtime_data.async_refresh()
+        assert (await client.receive_json())["event"]["available"] is True
     await entry.runtime_data.async_refresh()
     payload = (await client.receive_json())["event"]
     assert payload == {
