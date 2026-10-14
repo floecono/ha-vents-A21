@@ -243,7 +243,7 @@ const STYLE = `
   .unit .stream { fill: none; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
   .unit .gap { fill: none; stroke: var(--secondary-background-color, #eee); stroke-width: 16; stroke-linejoin: round; }
   .unit .motion { fill: none; stroke: rgba(255,255,255,.75); stroke-width: 2.5; stroke-linecap: round;
-                  stroke-dasharray: 1 17; animation: a21-flow var(--a21-period, 2s) linear infinite; }
+                  stroke-dasharray: 1 17; animation: a21-flow .5625s linear infinite; }
   .unit .hit { fill: transparent; cursor: pointer; }
   .unit.stopped .motion { display: none; }
   .unit.stopped .stream, .unit.stopped .head-arrow { opacity: .55; }
@@ -293,6 +293,10 @@ const STYLE = `
 // branches share the junctions, so their widths can follow the position of
 // the bypass damper: a damper at 40 % draws a thin stream around the
 // exchanger and a thicker one through it.
+// How long after a change of speed the card shows the target percentages
+// rather than the measured ones (fans ramp, then the next poll reads them).
+const FAN_SETTLE_MS = 60000;
+
 const STREAM_RADIUS = 14; // of the rounded corners, in viewBox units
 
 /** Path of a polyline whose corners are rounded with quadratic curves. */
@@ -676,6 +680,7 @@ class VentsA21Card extends HTMLElement {
             a.options,
             a.frost_protection,
             a.command,
+            a.fan_targets,
           ]
         );
       }),
@@ -692,6 +697,7 @@ class VentsA21Card extends HTMLElement {
     this._el.name.textContent =
       this._config.name || device.name_by_user || device.name || climate.attributes.friendly_name;
     const fanMode = climate.attributes.fan_mode;
+    const fans = this._fanPercentages(climate, on, fanMode, state);
     let status;
     if (unavailable) status = text.unavailable;
     else if (!on) status = text.off;
@@ -819,10 +825,8 @@ class VentsA21Card extends HTMLElement {
     root.querySelector('[data-stream="stale"] .stream[data-piece="around"]').setAttribute("stroke", colours.extract);
     for (const node of root.querySelectorAll("[data-text]")) node.textContent = text[node.dataset.text];
 
-    const fan = Math.max(number(state("supplyFan")) ?? 60, number(state("extractFan")) ?? 60);
-    this._el.unit.classList.toggle("stopped", !on || fan <= 0);
-    // 30 % → one dash step every 1.5 s, 100 % → every 0.45 s.
-    this._el.unit.style.setProperty("--a21-period", `${(45 / Math.max(fan, 30)).toFixed(2)}s`);
+    const anyFan = Math.max(fans.fresh ?? 0, fans.stale ?? 0);
+    this._el.unit.classList.toggle("stopped", !on || anyFan <= 0);
 
     // Bypass: 0 closed, 100 open. With a rotary exchanger the same value is
     // how much the wheel is slowed down, and no air goes around anything.
@@ -864,6 +868,11 @@ class VentsA21Card extends HTMLElement {
       root.querySelector(`[data-xstop="${name}-in"]`).setAttribute("stop-color", colours[inlet]);
       root.querySelector(`[data-xstop="${name}-out"]`).setAttribute("stop-color", exchanged);
     }
+    this._fanRates = {};
+    for (const name of Object.keys(STREAMS)) {
+      this._fanRates[name] = (fans[name] ?? fans[name === "fresh" ? "stale" : "fresh"] ?? 80) / 80;
+    }
+    this._paceDots();
 
     const efficiencyState = state("efficiency");
     const efficiency = number(efficiencyState);
@@ -986,13 +995,11 @@ class VentsA21Card extends HTMLElement {
     if (humidity !== null) fact("humidity", text.humidity, `${Math.round(humidity)} %`);
     const co2 = number(state("co2"));
     if (co2 !== null) fact("co2", text.co2, `${Math.round(co2)} ppm`);
-    const supplyFan = number(state("supplyFan"));
-    const extractFan = number(state("extractFan"));
-    if (supplyFan !== null && extractFan !== null) {
+    if (fans.fresh !== null && fans.stale !== null) {
       fact(
         "supplyFan",
         text.fans,
-        supplyFan === extractFan ? `${supplyFan} %` : `${supplyFan} / ${extractFan} %`,
+        fans.fresh === fans.stale ? `${fans.fresh} %` : `${fans.fresh} / ${fans.stale} %`,
       );
     }
     if (bypass !== null && rotary) {
@@ -1020,6 +1027,72 @@ class VentsA21Card extends HTMLElement {
         return button;
       }),
     );
+  }
+
+  /**
+   * Fan percentages to show: fresh (supply fan) and stale (extract fan).
+   *
+   * The measured values follow a change of speed only once the fans have
+   * got there and the next poll has read them, so for a while after a tap
+   * the card would look as if nothing happened. During that window the
+   * percentages the chosen speed stands for are shown instead, until the
+   * measurement agrees with them or a minute has passed.
+   */
+  _fanPercentages(climate, on, fanMode, state) {
+    const measured = { fresh: number(state("supplyFan")), stale: number(state("extractFan")) };
+    const targets = climate.attributes.fan_targets || {};
+    const target = !on ? (climate.state === "off" ? [0, 0] : null) : targets[fanMode] || null;
+    const key = `${climate.state}|${fanMode}|${target ? target.join("/") : ""}`;
+    const now = Date.now();
+    if (this._fanKey === undefined) {
+      this._fanKey = key; // first render: trust the measurement
+    } else if (key !== this._fanKey) {
+      this._fanKey = key;
+      this._fanChangedAt = now;
+      clearTimeout(this._fanTimer);
+      this._fanTimer = setTimeout(() => {
+        this._signature = null; // the measurement takes over: redraw
+        this._update();
+      }, FAN_SETTLE_MS + 50);
+    }
+    const settling = target && this._fanChangedAt !== undefined && now - this._fanChangedAt < FAN_SETTLE_MS;
+    if (!settling) return measured;
+    const close = (a, b) => a !== null && Math.abs(a - b) <= 2;
+    if (close(measured.fresh, target[0]) && close(measured.stale, target[1])) return measured;
+    return { fresh: target[0], stale: target[1] };
+  }
+
+  /**
+   * Make the dots travel at the speed of the fan that moves that air: the
+   * fresh stream follows the supply fan, the stale one the extract fan.
+   * The CSS period is the pace at 80 %; the playback rate scales it
+   * linearly, so 40 % runs half as fast and a change of speed glides
+   * rather than jumps. The card is first drawn before it is in the page,
+   * when no animation exists yet, so this also runs once connected.
+   */
+  _paceDots() {
+    const rates = this._fanRates;
+    if (!rates || !this.shadowRoot || typeof Element.prototype.getAnimations !== "function") return;
+    for (const [name, rate] of Object.entries(rates)) {
+      const group = this.shadowRoot.querySelector(`[data-stream="${name}"]`);
+      if (!group) continue;
+      for (const node of group.querySelectorAll(".motion")) {
+        for (const animation of node.getAnimations()) {
+          if (animation.playbackRate === rate) continue;
+          if (typeof animation.updatePlaybackRate === "function") animation.updatePlaybackRate(rate);
+          else animation.playbackRate = rate;
+        }
+      }
+    }
+  }
+
+  connectedCallback() {
+    // Drawn before being put in the page: the animations exist only now.
+    requestAnimationFrame(() => this._paceDots());
+  }
+
+  disconnectedCallback() {
+    clearTimeout(this._fanTimer);
   }
 
   _togglePower() {

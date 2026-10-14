@@ -19,9 +19,12 @@ from .const import (
     CL_POWER,
     DI_STATUS_COOLER,
     DI_STATUS_HEATER,
+    HR_MANUAL_SPEED,
     HR_OPERATION_MODE,
     HR_SET_TEMP,
     HR_SPEED_MODE,
+    HR_SUPPLY_SPEED0,
+    HR_VENTILATION_MODE,
     IR_RH_INT,
     IR_TEMP_SELECTED,
     SPEED_MANUAL,
@@ -102,6 +105,32 @@ class A21Climate(A21Entity, ClimateEntity):
     def target_temperature(self) -> float | None:
         """Return the temperature setpoint."""
         return self.coordinator.data.hr(HR_SET_TEMP)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Expose the fan percentages behind each speed.
+
+        The fans take a while to reach a new speed and the measured
+        percentages follow with the next poll; the card shows the figure the
+        speed stands for in the meantime, so a tap is seen to do something.
+        Only meaningful when the unit regulates in percent, not in airflow or
+        duct pressure.
+        """
+        data = self.coordinator.data
+        if data.hr(HR_VENTILATION_MODE) != 0:
+            return None
+        targets: dict[str, list[int]] = {}
+        for speed in range(1, data.max_speed + 1):
+            pair = (
+                data.hr(HR_SUPPLY_SPEED0 + 2 * speed),
+                data.hr(HR_SUPPLY_SPEED0 + 2 * speed + 1),
+            )
+            if None not in pair:
+                targets[str(speed)] = list(pair)
+        manual = data.hr(HR_MANUAL_SPEED)
+        if manual is not None:
+            targets[FAN_MANUAL] = [manual, manual]
+        return {"fan_targets": targets}
 
     @property
     def fan_modes(self) -> list[str]:

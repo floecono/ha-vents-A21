@@ -57,6 +57,13 @@ async def test_speed_and_setpoint(
     await call(hass, "climate", "set_fan_mode", entity_id=CLIMATE, fan_mode="manual")
     assert simulator.get_holding(2) == 255
     assert hass.states.get(CLIMATE).attributes["fan_mode"] == "manual"
+    # The card shows what each speed stands for while the fans get there.
+    assert hass.states.get(CLIMATE).attributes["fan_targets"] == {
+        "1": [40, 40],
+        "2": [70, 70],
+        "3": [100, 100],
+        "manual": [50, 50],
+    }
 
     # This unit has three speeds: speed 4 is refused before reaching it.
     with pytest.raises(ServiceValidationError):
