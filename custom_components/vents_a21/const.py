@@ -218,7 +218,9 @@ MODELS: Final[dict[str, Model]] = {
         "Zephyr 550 V PH Connect R",
         "114800003",
         _shop("vmc-double-flux-zephyr-550-v-ph-connect-r-econoprime-114800003.html"),
-        _shop("vmc-double-flux-zephyr-550-v-ph-connect-r-econoprime-114800003.html"),
+        _shop(
+            "filtres-panneau-596x164x60-econoprime-filtres-de-rechange-pour-centrale-double-flux-596-x-164-x-60-mm.html"
+        ),
     ),
     "df_180_flat_connect": Model(
         "ECONOPRIME",

@@ -22,7 +22,7 @@ const SHOP = "https://www.econology.fr/";
 const FILTERS = {
   "Zephyr 240 S Connect": "filtre-f7-vmc-double-flux-zephyr-240-fzeph240f7-econoprime.html",
   "Zephyr 270 V Connect R": "filtre-f7-zephyr-270-12300001-econoprime.html",
-  "Zephyr 550 V PH Connect R": "vmc-double-flux-zephyr-550-v-ph-connect-r-econoprime-114800003.html",
+  "Zephyr 550 V PH Connect R": "filtres-panneau-596x164x60-econoprime-filtres-de-rechange-pour-centrale-double-flux-596-x-164-x-60-mm.html",
   "DF 180 Flat Connect": "filtre-vmc-double-flux-df-180-econoprime.html",
   "DF 270 Connect": "filtre-vmc-double-flux-df-270-econoprime.html",
   "DF 350 Connect": "filtre-vmc-double-flux-df-350-econoprime.html",
