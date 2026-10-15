@@ -17,7 +17,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import A21Api, A21Data, CoilWrite, RegisterWrite, Write
 from .const import (
-    CONF_ENGINEER_PASSWORD,
+    CONF_DEVICE_PASSWORD,
     CONF_MANUAL_BYPASS,
     CONF_MODEL,
     CONF_UNIT_ID,
@@ -32,7 +32,7 @@ from .const import (
     Model,
 )
 from .filters import FilterStock
-from .identity import DEFAULT_ENGINEER_PASSWORD, async_read_identifier
+from .identity import DEFAULT_DEVICE_PASSWORD, async_read_identifier
 from .modbus import ModbusError, ModbusExceptionResponse
 
 _LOGGER = logging.getLogger(__name__)
@@ -94,7 +94,7 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         """Ask the unit for its identifier, over the protocol of the app."""
         host = self.config_entry.data[CONF_HOST]
         password = self.config_entry.data.get(
-            CONF_ENGINEER_PASSWORD, DEFAULT_ENGINEER_PASSWORD
+            CONF_DEVICE_PASSWORD, DEFAULT_DEVICE_PASSWORD
         )
         self.serial = await async_read_identifier(host, password)
 

@@ -18,12 +18,12 @@
             "data": {
               "port": "Modbus TCP port",
               "unit_id": "Modbus address",
-              "engineer_password": "Engineer password"
+              "device_password": "Device password"
             },
             "data_description": {
               "port": "502 unless configured otherwise.",
               "unit_id": "1 by default.",
-              "engineer_password": "1111 from the factory. The one of the mobile app; only used to ask the unit for its identifier."
+              "device_password": "1111 from the factory. The one the mobile app asks for; only used to ask the unit for its identifier."
             }
           }
         }
@@ -44,12 +44,12 @@
             "data": {
               "port": "Modbus TCP port",
               "unit_id": "Modbus address",
-              "engineer_password": "Engineer password"
+              "device_password": "Device password"
             },
             "data_description": {
               "port": "502 unless configured otherwise.",
               "unit_id": "1 by default.",
-              "engineer_password": "1111 from the factory. The one of the mobile app; only used to ask the unit for its identifier."
+              "device_password": "1111 from the factory. The one the mobile app asks for; only used to ask the unit for its identifier."
             }
           }
         }

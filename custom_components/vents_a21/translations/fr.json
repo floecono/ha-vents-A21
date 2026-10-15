@@ -18,12 +18,12 @@
             "data": {
               "port": "Port Modbus TCP",
               "unit_id": "Adresse Modbus",
-              "engineer_password": "Mot de passe ingénieur"
+              "device_password": "Mot de passe de l'appareil"
             },
             "data_description": {
               "port": "502 sauf configuration particulière.",
               "unit_id": "1 par défaut.",
-              "engineer_password": "1111 d'usine. Celui de l'application mobile ; sert uniquement à demander son numéro d'identification à la machine."
+              "device_password": "1111 d'usine. Celui que demande l'application mobile ; sert uniquement à demander son numéro d'identification à la machine."
             }
           }
         }
@@ -44,12 +44,12 @@
             "data": {
               "port": "Port Modbus TCP",
               "unit_id": "Adresse Modbus",
-              "engineer_password": "Mot de passe ingénieur"
+              "device_password": "Mot de passe de l'appareil"
             },
             "data_description": {
               "port": "502 sauf configuration particulière.",
               "unit_id": "1 par défaut.",
-              "engineer_password": "1111 d'usine. Celui de l'application mobile ; sert uniquement à demander son numéro d'identification à la machine."
+              "device_password": "1111 d'usine. Celui que demande l'application mobile ; sert uniquement à demander son numéro d'identification à la machine."
             }
           }
         }

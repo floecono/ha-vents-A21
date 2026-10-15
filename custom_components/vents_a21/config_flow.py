@@ -28,7 +28,7 @@ from homeassistant.helpers.selector import (
 from .api import A21Api
 from .const import (
     CONF_ADVANCED,
-    CONF_ENGINEER_PASSWORD,
+    CONF_DEVICE_PASSWORD,
     CONF_MANUAL_BYPASS,
     CONF_MODEL,
     CONF_UNIT_ID,
@@ -43,7 +43,7 @@ from .const import (
     MODELS,
     SHOP_HOME_URL,
 )
-from .identity import DEFAULT_ENGINEER_PASSWORD
+from .identity import DEFAULT_DEVICE_PASSWORD
 from .modbus import ModbusConnectionError, ModbusError
 
 
@@ -81,9 +81,9 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
                             )
                         ),
                         vol.Optional(
-                            CONF_ENGINEER_PASSWORD,
+                            CONF_DEVICE_PASSWORD,
                             default=defaults.get(
-                                CONF_ENGINEER_PASSWORD, DEFAULT_ENGINEER_PASSWORD
+                                CONF_DEVICE_PASSWORD, DEFAULT_DEVICE_PASSWORD
                             ),
                         ): TextSelector(),
                     }
@@ -100,8 +100,8 @@ def _flatten(user_input: dict[str, Any]) -> dict[str, Any]:
         CONF_HOST: user_input[CONF_HOST].strip(),
         CONF_PORT: int(advanced.get(CONF_PORT, DEFAULT_PORT)),
         CONF_UNIT_ID: int(advanced.get(CONF_UNIT_ID, DEFAULT_UNIT_ID)),
-        CONF_ENGINEER_PASSWORD: str(
-            advanced.get(CONF_ENGINEER_PASSWORD, DEFAULT_ENGINEER_PASSWORD)
+        CONF_DEVICE_PASSWORD: str(
+            advanced.get(CONF_DEVICE_PASSWORD, DEFAULT_DEVICE_PASSWORD)
         ).strip(),
         CONF_MODEL: user_input[CONF_MODEL],
     }

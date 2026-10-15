@@ -3,8 +3,9 @@
 The Modbus table of the A21 has no serial number. The Wi-Fi module speaks,
 besides Modbus TCP, the protocol of the manufacturer's app (UDP port 4000):
 a read of parameter 0x7C ("device search") sent with the wildcard
-identifier is answered with the module's own 16-character identifier, the
-one the app shows. Read-only, one datagram, unicast, so it also works
+identifier and the password of the unit (the one the app asks for) is
+answered with the module's own 16-character identifier, the one the app
+shows. Read-only, one datagram, unicast, so it also works
 across a router. Checked against a DF 350 Connect on 2026-10-16.
 """
 
@@ -17,7 +18,7 @@ import re
 _LOGGER = logging.getLogger(__name__)
 
 APP_PORT = 4000
-DEFAULT_ENGINEER_PASSWORD = "1111"
+DEFAULT_DEVICE_PASSWORD = "1111"
 _HEADER = b"\xfd\xfd"
 _PROTOCOL = 0x02
 _WILDCARD = b"DEFAULT_DEVICEID"
@@ -74,7 +75,7 @@ class _Search(asyncio.DatagramProtocol):
 
 
 async def async_read_identifier(
-    host: str, password: str = DEFAULT_ENGINEER_PASSWORD, port: int = APP_PORT
+    host: str, password: str = DEFAULT_DEVICE_PASSWORD, port: int = APP_PORT
 ) -> str | None:
     """Ask the module at host for its identifier; None when it does not say."""
     loop = asyncio.get_running_loop()
