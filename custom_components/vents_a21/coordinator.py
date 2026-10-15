@@ -25,6 +25,7 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_UNIT_ID,
     DOMAIN,
+    HR_FILTER_TIMER,
     IR_FILTER_DAYS,
     MANUAL_BYPASS_CODES,
     MODEL_GENERIC,
@@ -85,6 +86,7 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         # Spare filters at home; loaded by async_setup_entry.
         self.filters = FilterStock(hass, entry.entry_id, self.model)
         self._filter_days: int | None = None
+        self._filter_interval: int | None = None
         # MAC address of the Wi-Fi module, when the host's neighbour table
         # has it (async_learn_mac). The controller has no serial number on
         # Modbus; this is the next best thing to tell units apart.
@@ -187,11 +189,23 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         """Take a set out of the spare filters when the filter timer restarts.
 
         The timer counts down; it only goes up when the filters were replaced
-        and the counter reset, from wherever that was done.
+        and the counter reset, from wherever that was done. It also goes up
+        when the owner lengthens the replacement interval, which is not a
+        replacement: a rise that comes with a change of interval is ignored.
         """
         days = data.ir(IR_FILTER_DAYS)
+        interval = data.hr(HR_FILTER_TIMER)
         previous, self._filter_days = self._filter_days, days
-        if previous is not None and days is not None and days > previous + 1:
+        same_interval, self._filter_interval = (
+            interval == self._filter_interval,
+            interval,
+        )
+        if (
+            previous is not None
+            and days is not None
+            and days > previous + 1
+            and same_interval
+        ):
             _LOGGER.debug("Filter timer restarted (%s -> %s days)", previous, days)
             self.filters.consume()
 

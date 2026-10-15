@@ -218,3 +218,14 @@ async def test_spare_filters(
     # Corrected by hand.
     await call(hass, "number", "set_value", entity_id=coarse, value=6)
     assert hass.states.get(coarse).state == "6"
+
+    # Lengthening the replacement interval raises the countdown too: that is
+    # not a replacement, the stock must not move.
+    simulator.set_input(28, 88)
+    await coordinator.async_refresh()
+    simulator.set_holding(58, 180)
+    simulator.set_input(28, 178)
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(coarse).state == "6"
+    assert hass.states.get(fine).state == "2"
