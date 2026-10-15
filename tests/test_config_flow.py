@@ -11,6 +11,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.vents_a21.const import (
     CONF_ADVANCED,
     CONF_MODEL,
+    CONF_ENGINEER_PASSWORD,
     CONF_UNIT_ID,
     DOMAIN,
 )
@@ -47,6 +48,7 @@ async def test_user_flow(hass: HomeAssistant, simulator: A21Simulator) -> None:
         CONF_HOST: "127.0.0.1",
         CONF_PORT: simulator.port,
         CONF_UNIT_ID: 1,
+        CONF_ENGINEER_PASSWORD: "1111",
         CONF_MODEL: "zephyr_270_v_connect_r",
     }
     assert hass.states.get("climate.zephyr_270_v_connect_r").state == "auto"

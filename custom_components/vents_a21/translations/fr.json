@@ -17,11 +17,13 @@
             "name": "Paramètres avancés",
             "data": {
               "port": "Port Modbus TCP",
-              "unit_id": "Adresse Modbus"
+              "unit_id": "Adresse Modbus",
+              "engineer_password": "Mot de passe ingénieur"
             },
             "data_description": {
               "port": "502 sauf configuration particulière.",
-              "unit_id": "1 par défaut."
+              "unit_id": "1 par défaut.",
+              "engineer_password": "1111 d'usine. Celui de l'application mobile ; sert uniquement à demander son numéro d'identification à la machine."
             }
           }
         }
@@ -41,11 +43,13 @@
             "name": "Paramètres avancés",
             "data": {
               "port": "Port Modbus TCP",
-              "unit_id": "Adresse Modbus"
+              "unit_id": "Adresse Modbus",
+              "engineer_password": "Mot de passe ingénieur"
             },
             "data_description": {
               "port": "502 sauf configuration particulière.",
-              "unit_id": "1 par défaut."
+              "unit_id": "1 par défaut.",
+              "engineer_password": "1111 d'usine. Celui de l'application mobile ; sert uniquement à demander son numéro d'identification à la machine."
             }
           }
         }

@@ -20,10 +20,9 @@ const SHOP = "https://www.econology.fr/";
 // Where "order filters" puts the chosen filters in the shop's cart (POST
 // only; the shop then opens the cart). The reference tells the shop the
 // cart came from Home Assistant, from which model, and from which unit:
-// the controller has no serial number on Modbus, so the unit is told
-// apart by the MAC address of its Wi-Fi module when the integration
-// found it, else by the identifier Home Assistant gave it when it was
-// added (the same for every order as long as it stays installed).
+// the identifier of its Wi-Fi module (the number the app shows) when the
+// integration could ask for it, else the MAC address of the module, else
+// the identifier Home Assistant gave the unit when it was added.
 const CART = `${SHOP}veqai/cart`;
 const CART_REF = "home_assistant";
 
@@ -1319,7 +1318,7 @@ class VentsA21Card extends HTMLElement {
     this._hass.callService(DOMAIN, "filters_received", { device_id: deviceId });
   }
 
-  /** home_assistant_<model>_<unit>, e.g. home_assistant_zephyr-240-s-connect_a4cf12b3e9d0. */
+  /** home_assistant_<model>_<unit>, e.g. home_assistant_df-350-connect_0020003A3032510E. */
   _cartReference() {
     const deviceId = this._config.device_id || devicesOf(this._hass)[0];
     const device = this._hass.devices?.[deviceId];
@@ -1328,9 +1327,11 @@ class VentsA21Card extends HTMLElement {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
     const mac = (device?.connections || []).find(([kind]) => kind === "mac")?.[1];
-    const unit = mac
-      ? mac.replace(/[^0-9a-f]/gi, "").toLowerCase()
-      : String(device?.primary_config_entry || device?.config_entries?.[0] || deviceId || "").slice(0, 12);
+    const unit = device?.serial_number
+      ? String(device.serial_number)
+      : mac
+        ? mac.replace(/[^0-9a-f]/gi, "").toLowerCase()
+        : String(device?.primary_config_entry || device?.config_entries?.[0] || deviceId || "").slice(0, 12);
     return [CART_REF, model, unit].filter(Boolean).join("_");
   }
 

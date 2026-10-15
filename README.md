@@ -112,6 +112,8 @@ Les sondes d'humidité, de CO₂, de PM2.5 et de COV, l'entrée 0-10 V, les batt
 2. Relevez son adresse IP, dans l'application ou dans la liste des appareils de votre box.
 3. Dans votre box, réservez-lui cette adresse (bail DHCP statique) pour qu'elle ne change plus.
 
+Dans les paramètres avancés du formulaire, le **mot de passe ingénieur** (1111 d'usine) ne sert qu'à une chose : demander à la machine son numéro d'identification, par le même protocole que l'application mobile, pour l'afficher dans la page de l'appareil et repérer vos commandes de filtres. L'automate ne l'expose pas en Modbus. Si vous l'avez changé dans l'application, indiquez-le ici ; s'il est faux, l'intégration fonctionne quand même, sans ce numéro.
+
 La machine n'accepte **qu'une seule connexion Modbus TCP** par interface réseau. Si une GTB ou une autre domotique l'interroge déjà en Modbus TCP, Home Assistant ne pourra pas s'y connecter. Home Assistant garde cette connexion ouverte en permanence (voir « Coupures passagères » plus bas) : pendant qu'il est raccordé, aucun autre client Modbus TCP ne peut l'être. Si la machine refuse la connexion juste après un arrêt brutal de Home Assistant (coupure de courant), c'est qu'elle croit encore l'ancienne connexion ouverte ; elle la libère d'elle-même au bout de quelques minutes.
 
 ### 2. Installer l'intégration avec HACS
@@ -153,7 +155,7 @@ Avec plusieurs machines, précisez `device_id` (l'éditeur de la carte propose l
 La tuile principale affiche un rappel quand les filtres arrivent à échéance. Deux options se règlent dans l'éditeur de la tuile, ou en YAML :
 
 - **`filter_reminder_days`** : nombre de jours avant l'échéance à partir duquel le rappel s'affiche. 21 par défaut ; avec 0, il n'apparaît qu'une fois l'échéance atteinte.
-- **`filter_link`** : ajoute au rappel un bouton **Commander les filtres**. Il demande quels filtres vous voulez et en quelle quantité, puis les met directement dans votre panier sur econology.fr, dans un nouvel onglet : il ne reste qu'à valider. La commande est repérée comme venant de Home Assistant, avec le modèle et un identifiant propre à votre machine : l'adresse MAC de son module Wi-Fi quand Home Assistant la connaît (même réseau), sinon l'identifiant que Home Assistant lui a donné — l'automate n'expose pas de numéro de série en Modbus. Désactivé par défaut.
+- **`filter_link`** : ajoute au rappel un bouton **Commander les filtres**. Il demande quels filtres vous voulez et en quelle quantité, puis les met directement dans votre panier sur econology.fr, dans un nouvel onglet : il ne reste qu'à valider. La commande est repérée comme venant de Home Assistant, avec le modèle et le numéro d'identification de votre machine (celui que montre l'application), que l'intégration lui demande à l'installation ; à défaut, l'identifiant que Home Assistant lui a donné. Désactivé par défaut.
 
 #### Filtres de rechange : la réserve
 

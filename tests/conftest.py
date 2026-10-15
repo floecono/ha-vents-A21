@@ -21,6 +21,18 @@ def _enable_custom_integrations(enable_custom_integrations: None) -> None:
     """Let Home Assistant load the integration from custom_components."""
 
 
+@pytest.fixture(autouse=True)
+def _no_identity_query(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Skip the UDP question to the unit (3 s of silence from the simulator)."""
+
+    async def nothing(*_args, **_kwargs) -> None:
+        return None
+
+    monkeypatch.setattr(
+        "custom_components.vents_a21.coordinator.async_read_identifier", nothing
+    )
+
+
 @pytest.fixture
 async def simulator(socket_enabled: None) -> AsyncGenerator[A21Simulator]:
     """Run a simulated controller on a free local port."""

@@ -17,11 +17,13 @@
             "name": "Advanced settings",
             "data": {
               "port": "Modbus TCP port",
-              "unit_id": "Modbus address"
+              "unit_id": "Modbus address",
+              "engineer_password": "Engineer password"
             },
             "data_description": {
               "port": "502 unless configured otherwise.",
-              "unit_id": "1 by default."
+              "unit_id": "1 by default.",
+              "engineer_password": "1111 from the factory. The one of the mobile app; only used to ask the unit for its identifier."
             }
           }
         }
@@ -41,11 +43,13 @@
             "name": "Advanced settings",
             "data": {
               "port": "Modbus TCP port",
-              "unit_id": "Modbus address"
+              "unit_id": "Modbus address",
+              "engineer_password": "Engineer password"
             },
             "data_description": {
               "port": "502 unless configured otherwise.",
-              "unit_id": "1 by default."
+              "unit_id": "1 by default.",
+              "engineer_password": "1111 from the factory. The one of the mobile app; only used to ask the unit for its identifier."
             }
           }
         }

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import socket
-from pathlib import Path
 from collections.abc import Callable
 from datetime import timedelta
 
@@ -19,6 +17,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import A21Api, A21Data, CoilWrite, RegisterWrite, Write
 from .const import (
+    CONF_ENGINEER_PASSWORD,
     CONF_MANUAL_BYPASS,
     CONF_MODEL,
     CONF_UNIT_ID,
@@ -33,6 +32,7 @@ from .const import (
     Model,
 )
 from .filters import FilterStock
+from .identity import DEFAULT_ENGINEER_PASSWORD, async_read_identifier
 from .modbus import ModbusError, ModbusExceptionResponse
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,8 +43,6 @@ _LOGGER = logging.getLogger(__name__)
 # moment, should not blank the dashboard and trip automations.
 RETRY_DELAY = 1.0
 TOLERATED_FAILURES = 3
-# Linux neighbour table, where the MAC address of the unit is looked up.
-ARP_TABLE = Path("/proc/net/arp")
 
 type A21ConfigEntry = ConfigEntry[A21Coordinator]
 
@@ -87,19 +85,18 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         self.filters = FilterStock(hass, entry.entry_id, self.model)
         self._filter_days: int | None = None
         self._filter_interval: int | None = None
-        # MAC address of the Wi-Fi module, when the host's neighbour table
-        # has it (async_learn_mac). The controller has no serial number on
-        # Modbus; this is the next best thing to tell units apart.
-        self.mac: str | None = None
+        # Identifier of the Wi-Fi module, the one the app shows, asked over
+        # the app protocol (async_learn_identity). The serial number of the
+        # unit for all practical purposes.
+        self.serial: str | None = None
 
-    async def async_learn_mac(self) -> None:
-        """Look the unit's MAC address up in the neighbour table, after a poll."""
-        try:
-            self.mac = await self.hass.async_add_executor_job(
-                _mac_of, self.config_entry.data[CONF_HOST]
-            )
-        except (OSError, ValueError) as err:
-            _LOGGER.debug("No MAC address for %s: %s", self.config_entry.data[CONF_HOST], err)
+    async def async_learn_identity(self) -> None:
+        """Ask the unit for its identifier, over the protocol of the app."""
+        host = self.config_entry.data[CONF_HOST]
+        password = self.config_entry.data.get(
+            CONF_ENGINEER_PASSWORD, DEFAULT_ENGINEER_PASSWORD
+        )
+        self.serial = await async_read_identifier(host, password)
 
     @property
     def device_name(self) -> str:
@@ -129,7 +126,7 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         """Describe the ventilation unit."""
         return DeviceInfo(
             identifiers={(DOMAIN, self.config_entry.entry_id)},
-            connections={(dr.CONNECTION_NETWORK_MAC, self.mac)} if self.mac else set(),
+            serial_number=self.serial,
             name=self.config_entry.title,
             manufacturer=self.model.manufacturer,
             model=self.model.name,
@@ -217,21 +214,3 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         """Write one holding register."""
         await self.async_write(RegisterWrite(address, value))
 
-
-def _mac_of(host: str) -> str | None:
-    """Return the MAC address the kernel has for host, from /proc/net/arp.
-
-    Home Assistant has just talked to the unit, so its address is in the
-    neighbour table when both are on the same network. Behind a router the
-    table holds the router instead, and nothing is returned: a Linux-only
-    best effort, never required.
-    """
-    ip = socket.gethostbyname(host)
-    if not ARP_TABLE.exists():
-        return None
-    for line in ARP_TABLE.read_text().splitlines()[1:]:
-        fields = line.split()
-        if len(fields) >= 4 and fields[0] == ip:
-            mac = fields[3].lower()
-            return mac if mac != "00:00:00:00:00:00" else None
-    return None

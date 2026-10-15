@@ -14,6 +14,8 @@ DOMAIN: Final = "vents_a21"
 CONF_UNIT_ID: Final = "unit_id"
 CONF_MODEL: Final = "model"
 CONF_ADVANCED: Final = "advanced"
+# Password of the app/engineer menu, used once to ask the unit its identifier.
+CONF_ENGINEER_PASSWORD: Final = "engineer_password"
 # Option: the bypass is driven from Home Assistant, so the warning the unit
 # raises while its bypass is in manual mode is expected and is not reported.
 CONF_MANUAL_BYPASS: Final = "manual_bypass"
