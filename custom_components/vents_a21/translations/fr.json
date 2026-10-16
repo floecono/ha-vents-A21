@@ -674,6 +674,9 @@
       },
       "filters_fine_stock": {
         "name": "Filtres {cls} en stock"
+      },
+      "filters_reminder_days": {
+        "name": "Rappel des filtres avant échéance"
       }
     }
   },

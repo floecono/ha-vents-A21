@@ -181,6 +181,12 @@ async def test_spare_filters(
     # By default a replacement takes a G4 on extract and an F7 on supply.
     assert hass.states.get(coarse).attributes["per_change"] == 1
     assert hass.states.get(fine).attributes["per_change"] == 1
+    # The reminder lives with the stock: 21 days by default, adjustable.
+    reminder = f"number.{PREFIX}_filter_reminder_before_the_deadline"
+    assert hass.states.get(reminder).state == "21"
+    await call(hass, "number", "set_value", entity_id=reminder, value=45)
+    assert hass.states.get(reminder).state == "45"
+    assert entry.runtime_data.filters.reminder_days == 45
 
     device = dr.async_get(hass).async_get_device({("vents_a21", entry.entry_id)})
     assert device is not None

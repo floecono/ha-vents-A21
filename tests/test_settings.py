@@ -54,7 +54,7 @@ def test_every_entity_has_a_name(language: str) -> None:
         "button": {d.key for d in button.BUTTONS},
         "select": {d.key for d in select.SELECTS} | {"filters_supply"},
         "number": {d.name_key or d.key for d in number.NUMBERS}
-        | {"filters_coarse_stock", "filters_fine_stock"},
+        | {"filters_coarse_stock", "filters_fine_stock", "filters_reminder_days"},
     }
     for platform, keys in wanted.items():
         assert keys == set(names[platform]), platform

@@ -31,6 +31,12 @@ COARSE: Final = "coarse"
 FINE: Final = "fine"
 CLASSES: Final = (COARSE, FINE)
 
+# How many days before the replacement deadline the owner is reminded to
+# order (0: only when the deadline is reached). Three weeks covers the
+# delivery and a busy fortnight.
+DEFAULT_REMINDER_DAYS: Final = 21
+MAX_REMINDER_DAYS: Final = 120
+
 
 class FilterStock:
     """The spare filters of one unit, saved in Home Assistant's storage."""
@@ -43,6 +49,7 @@ class FilterStock:
         self.stock: dict[str, int] = {COARSE: 0, FINE: 0}
         self.ordered: dict[str, int] = {COARSE: 0, FINE: 0}
         self.supply: str = DEFAULT_SUPPLY
+        self.reminder_days: int = DEFAULT_REMINDER_DAYS
         # Nobody is told "no spare filters" before the stock was ever used:
         # a fresh install would otherwise nag every owner at once.
         self.tracking = False
@@ -65,7 +72,18 @@ class FilterStock:
         }
         supply = data.get("supply", DEFAULT_SUPPLY)
         self.supply = supply if supply in SUPPLY_OPTIONS else DEFAULT_SUPPLY
+        self.reminder_days = self._clamp_days(
+            data.get("reminder_days", DEFAULT_REMINDER_DAYS)
+        )
         self.tracking = bool(data.get("tracking", False))
+
+    @staticmethod
+    def _clamp_days(value: Any) -> int:
+        try:
+            days = int(value)
+        except (TypeError, ValueError):
+            return DEFAULT_REMINDER_DAYS
+        return min(max(days, 0), MAX_REMINDER_DAYS)
 
     @callback
     def async_add_listener(self, listener: Callable[[], None]) -> Callable[[], None]:
@@ -83,6 +101,7 @@ class FilterStock:
             "stock": dict(self.stock),
             "ordered": dict(self.ordered),
             "supply": self.supply,
+            "reminder_days": self.reminder_days,
             "tracking": self.tracking,
         }
 
@@ -112,6 +131,12 @@ class FilterStock:
         if option in SUPPLY_OPTIONS:
             self.supply = option
             self._changed()
+
+    @callback
+    def set_reminder_days(self, days: int) -> None:
+        """Set how many days before the deadline the reminder starts."""
+        self.reminder_days = self._clamp_days(days)
+        self._changed()
 
     @callback
     def consume(self) -> None:

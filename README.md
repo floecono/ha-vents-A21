@@ -152,16 +152,17 @@ Avec plusieurs machines, précisez `device_id` (l'éditeur de la carte propose l
 
 #### Rappel des filtres et lien de commande
 
-La tuile principale affiche un rappel quand les filtres arrivent à échéance. Deux options se règlent dans l'éditeur de la tuile, ou en YAML :
+La tuile principale affiche un rappel quand les filtres arrivent à échéance. Le délai se règle sur la machine, pas sur la tuile : le réglage **Rappel des filtres avant échéance**, dans la page de l'appareil à côté des stocks de filtres, donne le nombre de jours avant l'échéance à partir duquel le rappel s'affiche (21 par défaut ; avec 0, il n'apparaît qu'une fois l'échéance atteinte). Toutes les tuiles de la machine suivent ce réglage. L'ancienne option de tuile `filter_reminder_days` n'est plus lue qu'avec une intégration antérieure à la 0.2.12.
 
-- **`filter_reminder_days`** : nombre de jours avant l'échéance à partir duquel le rappel s'affiche. 21 par défaut ; avec 0, il n'apparaît qu'une fois l'échéance atteinte.
+Une option se règle dans l'éditeur de la tuile, ou en YAML :
+
 - **`filter_link`** : ajoute au rappel un bouton **Commander les filtres**. Il demande quels filtres vous voulez et en quelle quantité, puis les met directement dans votre panier sur econology.fr, dans un nouvel onglet : il ne reste qu'à valider. La commande est repérée comme venant de Home Assistant, avec le modèle et le numéro d'identification de votre machine (celui que montre l'application), que l'intégration lui demande à l'installation ; à défaut, l'identifiant que Home Assistant lui a donné. Désactivé par défaut.
 
 #### Filtres de rechange : la réserve
 
 Commander un lot de filtres plutôt qu'un jeu à chaque fois économise les frais de port, à condition de savoir ce qu'il reste dans le placard. L'intégration le sait pour vous :
 
-- Deux réglages par machine dans la page de l'appareil, **Filtres G4 en stock** et **Filtres F7 en stock**, et un troisième, **Filtres air neuf** (G4, F7 ou G4 + F7, selon ce qui équipe le côté air neuf de votre machine ; le côté extraction prend toujours un G4). Par défaut : un G4 à l'extraction, un F7 à l'air neuf.
+- Des réglages par machine dans la page de l'appareil : **Filtres G4 en stock** et **Filtres F7 en stock**, **Rappel des filtres avant échéance** (le délai du rappel, voir plus haut), et **Filtres air neuf** (G4, F7 ou G4 + F7, selon ce qui équipe le côté air neuf de votre machine ; le côté extraction prend toujours un G4). Par défaut : un G4 à l'extraction, un F7 à l'air neuf.
 - **La réserve baisse toute seule au changement de filtres** : dès que le compteur de jours de la machine repart, que la remise à zéro vienne de Home Assistant, de l'application ou du panneau, un jeu est retiré du stock.
 - **La fenêtre de commande propose un an de filtres** d'après l'intervalle de remplacement réglé dans la machine (par exemple 4 G4 + 4 F7 pour un intervalle de 90 jours), moins ce qui est déjà en stock ; vous ajustez les quantités avant d'envoyer au panier. La tuile retient ensuite « commande en cours » et affiche **Reçus** : un clic à l'ouverture du colis, et la réserve est à jour.
 - Le rappel tient compte de la réserve : s'il reste de quoi faire le prochain changement, il le dit et ne propose pas de commander ; sinon, le bouton de commande apparaît. Quand la réserve est vide après un changement, la tuile le signale même loin de l'échéance, pour commander au calme.
@@ -170,7 +171,6 @@ Rien de tout cela n'est actif tant que vous n'avez pas renseigné un stock ou pa
 
 ```yaml
 type: custom:vents-a21-card
-filter_reminder_days: 30
 filter_link: true
 ```
 

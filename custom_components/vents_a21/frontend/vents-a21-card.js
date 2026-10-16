@@ -152,7 +152,6 @@ const TEXT = {
     pickDevice: "Machine",
     name: "Nom affiché (facultatif)",
     filterLink: "Afficher le lien pour commander les filtres quand ils sont à remplacer",
-    filterDays: "Rappel des filtres : nombre de jours avant l'échéance (0 : à l'échéance seulement)",
     bypassOption: "Afficher la commande manuelle du bypass (automatique, ouvert, fermé)",
     cardName: "VMC double flux ECONOPRIME / VENTS A21",
     cardDescription: "Vue de la machine : températures des quatre flux d'air, rendement, bypass, vitesses, filtres.",
@@ -240,7 +239,6 @@ const TEXT = {
     pickDevice: "Unit",
     name: "Displayed name (optional)",
     filterLink: "Show the link to order filters when they need replacing",
-    filterDays: "Filter reminder: days before the deadline (0: only at the deadline)",
     bypassOption: "Show the manual bypass control (automatic, open, closed)",
     cardName: "ECONOPRIME / VENTS A21 ventilation unit",
     cardDescription: "View of the unit: temperature of the four air streams, efficiency, bypass, speeds, filters.",
@@ -564,6 +562,7 @@ const SOURCES = {
   manualSpeed: "number.manual_speed",
   stockCoarse: "number.filters_coarse_stock",
   stockFine: "number.filters_fine_stock",
+  reminderDays: "number.filters_reminder_days",
   filterSupply: "select.filters_supply",
   filterInterval: "number.filter_interval",
 };
@@ -597,7 +596,6 @@ const FORM_LABELS = {
   device_id: "pickDevice",
   name: "name",
   filter_link: "filterLink",
-  filter_reminder_days: "filterDays",
   bypass_control: "bypassOption",
 };
 
@@ -638,11 +636,6 @@ class VentsA21Card extends HTMLElement {
 
   static getConfigForm() {
     return configForm([
-      {
-        name: "filter_reminder_days",
-        default: FILTER_SOON_DAYS,
-        selector: { number: { min: 0, max: FILTER_SOON_MAX, step: 1, mode: "box" } },
-      },
       { name: "filter_link", selector: { boolean: {} } },
       { name: "bypass_control", selector: { boolean: {} } },
     ]);
@@ -889,11 +882,17 @@ class VentsA21Card extends HTMLElement {
     const days = number(state("filterDays"));
     // Due when the unit says so, or when its countdown has run out.
     const filterDue = is("filterAlert") || (days !== null && days <= 0);
+    // The reminder lead time is a setting of the unit (number entity kept
+    // with the spare-filter stock). The former card option is only read
+    // when that entity is missing, i.e. with an older integration.
+    const fromUnit = number(state("reminderDays"));
     const configured = Number(this._config.filter_reminder_days);
     const soonDays =
-      this._config.filter_reminder_days == null || !Number.isFinite(configured)
-        ? FILTER_SOON_DAYS
-        : Math.min(Math.max(Math.round(configured), 0), FILTER_SOON_MAX);
+      fromUnit !== null
+        ? Math.min(Math.max(Math.round(fromUnit), 0), FILTER_SOON_MAX)
+        : this._config.filter_reminder_days == null || !Number.isFinite(configured)
+          ? FILTER_SOON_DAYS
+          : Math.min(Math.max(Math.round(configured), 0), FILTER_SOON_MAX);
     const filterSoon = !filterDue && days !== null && days <= soonDays;
     // Spare filters at home (kept by the integration): what is in stock,
     // what one replacement uses, what is on order.
