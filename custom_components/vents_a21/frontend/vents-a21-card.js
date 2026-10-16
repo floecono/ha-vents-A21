@@ -14,6 +14,7 @@
 const DOMAIN = "vents_a21";
 const CARD = "vents-a21-card";
 const DETAILS_CARD = "vents-a21-details-card";
+const CARD_EDITOR = "vents-a21-card-editor";
 const UTM = "?utm_source=home-assistant&utm_medium=card&utm_campaign=vents_a21";
 const SHOP = "https://www.econology.fr/";
 
@@ -153,6 +154,9 @@ const TEXT = {
     name: "Nom affiché (facultatif)",
     filterLink: "Afficher le lien pour commander les filtres quand ils sont à remplacer",
     bypassOption: "Afficher la commande manuelle du bypass (automatique, ouvert, fermé)",
+    unitSettings: "Réglages de la machine",
+    unitSettingsHint: "Enregistrés dans la machine (page de l'appareil), partagés par toutes ses tuiles.",
+    reminderDays: "Rappel des filtres : jours avant l'échéance (0 : à l'échéance seulement)",
     cardName: "VMC double flux ECONOPRIME / VENTS A21",
     cardDescription: "Vue de la machine : températures des quatre flux d'air, rendement, bypass, vitesses, filtres.",
     detailsName: "VMC double flux ECONOPRIME / VENTS A21 : toutes les mesures",
@@ -240,6 +244,9 @@ const TEXT = {
     name: "Displayed name (optional)",
     filterLink: "Show the link to order filters when they need replacing",
     bypassOption: "Show the manual bypass control (automatic, open, closed)",
+    unitSettings: "Unit settings",
+    unitSettingsHint: "Stored in the unit (device page) and shared by all of its cards.",
+    reminderDays: "Filter reminder: days before the deadline (0: only at the deadline)",
     cardName: "ECONOPRIME / VENTS A21 ventilation unit",
     cardDescription: "View of the unit: temperature of the four air streams, efficiency, bypass, speeds, filters.",
     detailsName: "ECONOPRIME / VENTS A21 ventilation unit: every measurement",
@@ -639,6 +646,12 @@ class VentsA21Card extends HTMLElement {
       { name: "filter_link", selector: { boolean: {} } },
       { name: "bypass_control", selector: { boolean: {} } },
     ]);
+  }
+
+  // The editor is the form above plus the settings of the unit that a
+  // dashboard owner expects to find here (see VentsA21CardEditor).
+  static getConfigElement() {
+    return document.createElement(CARD_EDITOR);
   }
 
   setConfig(config) {
@@ -1703,6 +1716,103 @@ class VentsA21DetailsCard extends HTMLElement {
   }
 }
 
+/**
+ * Editor of the main card: the declarative form (device, name, options of
+ * the card) followed by the settings of the unit that belong next to it.
+ * Those are not stored in the card: the field reads the number entity of
+ * the unit and writes it back with number.set_value, so the owner adjusts
+ * the filter reminder while placing the card, without digging into the
+ * device page, and every card of that unit follows.
+ */
+class VentsA21CardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = config || {};
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._render();
+  }
+
+  _build() {
+    this.attachShadow({ mode: "open" });
+    this.shadowRoot.innerHTML = `
+      <style>
+        .unit { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--divider-color); }
+        .unit h4 { margin: 0 0 4px; font-size: 14px; font-weight: 500; }
+        .unit p { margin: 0 0 12px; font-size: 12px; color: var(--secondary-text-color); }
+        .unit label { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 14px; }
+        .unit input { width: 6em; padding: 6px 8px; font: inherit; color: var(--primary-text-color);
+          background: var(--card-background-color); border: 1px solid var(--divider-color); border-radius: 4px; }
+      </style>
+      <ha-form></ha-form>
+      <div class="unit" hidden>
+        <h4></h4><p></p>
+        <label><span></span><input type="number" min="0" max="${FILTER_SOON_MAX}" step="1"></label>
+      </div>`;
+    this._form = this.shadowRoot.querySelector("ha-form");
+    this._form.addEventListener("value-changed", (ev) => {
+      ev.stopPropagation();
+      this._config = ev.detail.value;
+      this.dispatchEvent(
+        new CustomEvent("config-changed", { detail: { config: this._config }, bubbles: true, composed: true })
+      );
+    });
+    this._unit = this.shadowRoot.querySelector(".unit");
+    this._input = this._unit.querySelector("input");
+    this._input.addEventListener("change", () => this._setReminder());
+  }
+
+  /** The reminder entity of the configured unit, if the integration has it. */
+  _reminderEntity() {
+    const hass = this._hass;
+    const deviceId = this._config.device_id || devicesOf(hass)[0];
+    for (const [entityId, entity] of Object.entries(hass.entities || {})) {
+      if (
+        entity.platform === DOMAIN &&
+        entity.device_id === deviceId &&
+        entityId.startsWith("number.") &&
+        entity.translation_key === "filters_reminder_days"
+      )
+        return entityId;
+    }
+    return null;
+  }
+
+  _setReminder() {
+    const entityId = this._reminderEntity();
+    const value = Number(this._input.value);
+    if (!entityId || !Number.isFinite(value)) return;
+    const days = Math.min(Math.max(Math.round(value), 0), FILTER_SOON_MAX);
+    this._input.value = String(days);
+    this._hass.callService("number", "set_value", { entity_id: entityId, value: days });
+  }
+
+  _render() {
+    if (!this._hass || !this._config) return;
+    if (!this.shadowRoot) this._build();
+    const form = VentsA21Card.getConfigForm();
+    this._form.hass = this._hass;
+    this._form.data = this._config;
+    this._form.schema = form.schema;
+    this._form.computeLabel = form.computeLabel;
+
+    const text = TEXT[(this._hass.language || "en").startsWith("fr") ? "fr" : "en"];
+    const entityId = this._reminderEntity();
+    const stateObj = entityId ? this._hass.states[entityId] : undefined;
+    this._unit.hidden = !stateObj;
+    if (!stateObj) return;
+    this._unit.querySelector("h4").textContent = text.unitSettings;
+    this._unit.querySelector("p").textContent = text.unitSettingsHint;
+    this._unit.querySelector("span").textContent = text.reminderDays;
+    // Do not overwrite what the owner is typing.
+    if (this.shadowRoot.activeElement !== this._input) {
+      this._input.value = stateObj.state;
+    }
+  }
+}
+
 // Home Assistant swaps window.customElements for a scoped registry while it
 // starts. This file is loaded before that happens (it is an "extra module"
 // of the integration, not a dashboard resource), and an element defined on
@@ -1715,7 +1825,7 @@ const CARDS = [
 ];
 
 function register() {
-  for (const [tag, cls] of CARDS) {
+  for (const [tag, cls] of [...CARDS, [CARD_EDITOR, VentsA21CardEditor]]) {
     if (!window.customElements.get(tag)) window.customElements.define(tag, cls);
   }
 }

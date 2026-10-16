@@ -152,7 +152,7 @@ Avec plusieurs machines, précisez `device_id` (l'éditeur de la carte propose l
 
 #### Rappel des filtres et lien de commande
 
-La tuile principale affiche un rappel quand les filtres arrivent à échéance. Le délai se règle sur la machine, pas sur la tuile : le réglage **Rappel des filtres avant échéance**, dans la page de l'appareil à côté des stocks de filtres, donne le nombre de jours avant l'échéance à partir duquel le rappel s'affiche (21 par défaut ; avec 0, il n'apparaît qu'une fois l'échéance atteinte). Toutes les tuiles de la machine suivent ce réglage. L'ancienne option de tuile `filter_reminder_days` n'est plus lue qu'avec une intégration antérieure à la 0.2.12.
+La tuile principale affiche un rappel quand les filtres arrivent à échéance. Le délai se règle sur la machine, pas sur la tuile : le réglage **Rappel des filtres avant échéance**, dans la page de l'appareil à côté des stocks de filtres, donne le nombre de jours avant l'échéance à partir duquel le rappel s'affiche (21 par défaut ; avec 0, il n'apparaît qu'une fois l'échéance atteinte). Toutes les tuiles de la machine suivent ce réglage. Pour ne pas avoir à chercher la page de l'appareil, l'éditeur de la tuile le propose aussi, dans son bloc **Réglages de la machine** : ce que vous y saisissez part directement dans la machine, pas dans la tuile. L'ancienne option de tuile `filter_reminder_days` n'est plus lue qu'avec une intégration antérieure à la 0.2.12.
 
 Une option se règle dans l'éditeur de la tuile, ou en YAML :
 
