@@ -22,8 +22,8 @@ const SHOP = "https://www.econology.fr/";
 // only; the shop then opens the cart). The reference tells the shop the
 // cart came from Home Assistant, from which model, and from which unit:
 // the identifier of its Wi-Fi module (the number the app shows) when the
-// integration could ask for it, else the MAC address of the module, else
-// the identifier Home Assistant gave the unit when it was added.
+// integration could ask for it, else the identifier Home Assistant gave
+// the unit when it was added.
 const CART = `${SHOP}veqai/cart`;
 const CART_REF = "home_assistant";
 
@@ -1338,12 +1338,9 @@ class VentsA21Card extends HTMLElement {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
-    const mac = (device?.connections || []).find(([kind]) => kind === "mac")?.[1];
     const unit = device?.serial_number
       ? String(device.serial_number)
-      : mac
-        ? mac.replace(/[^0-9a-f]/gi, "").toLowerCase()
-        : String(device?.primary_config_entry || device?.config_entries?.[0] || deviceId || "").slice(0, 12);
+      : String(device?.primary_config_entry || device?.config_entries?.[0] || deviceId || "").slice(0, 12);
     return [CART_REF, model, unit].filter(Boolean).join("_");
   }
 
