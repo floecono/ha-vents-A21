@@ -60,6 +60,8 @@ ISSUE_MODBUS_STUCK = "modbus_stuck"
 STUCK_INTERVAL = timedelta(minutes=10)
 # Window of the "link hiccups" counter.
 HICCUP_WINDOW = 24 * 3600
+# A missing identifier is asked again this often (seconds).
+IDENTITY_RETRY = 600
 
 type A21ConfigEntry = ConfigEntry[A21Coordinator]
 
@@ -119,6 +121,8 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         # the app protocol (async_learn_identity). The serial number of the
         # unit for all practical purposes.
         self.serial: str | None = None
+        self._identity_asked_at = -float("inf")
+        self._identity_task: asyncio.Task | None = None
 
     async def async_learn_identity(self) -> None:
         """Ask the unit for its identifier, over the protocol of the app."""
@@ -126,7 +130,42 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         password = self.config_entry.data.get(
             CONF_DEVICE_PASSWORD, DEFAULT_DEVICE_PASSWORD
         )
-        self.serial = await async_read_identifier(host, password)
+        self._identity_asked_at = time.monotonic()
+        serial = await async_read_identifier(host, password)
+        if serial is None:
+            _LOGGER.debug("%s did not give its identifier over UDP", host)
+            return
+        self.serial = serial
+        _LOGGER.debug("%s identifies itself as %s", host, serial)
+        # Entities already created carry the device info of the time: update
+        # the device registry so the page of the unit shows the number.
+        registry = dr.async_get(self.hass)
+        for device in dr.async_entries_for_config_entry(
+            registry, self.config_entry.entry_id
+        ):
+            if device.serial_number != serial:
+                registry.async_update_device(device.id, serial_number=serial)
+
+    @callback
+    def _retry_identity_later(self) -> None:
+        """Ask again for the identifier when it is still missing.
+
+        The question is asked once at set-up; if the module was still
+        booting, or Home Assistant started before the network was up, it
+        went unanswered. Ask again after a successful poll, at most every
+        IDENTITY_RETRY seconds.
+        """
+        if self.serial is not None:
+            return
+        if self._identity_task is not None and not self._identity_task.done():
+            return
+        if time.monotonic() - self._identity_asked_at < IDENTITY_RETRY:
+            return
+        # Tasks may run eagerly, so the attribute is read with done() above
+        # rather than cleared by the task itself.
+        self._identity_task = self.config_entry.async_create_task(
+            self.hass, self.async_learn_identity(), name=f"{DOMAIN} identity"
+        )
 
     @property
     def device_name(self) -> str:
@@ -185,6 +224,7 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
             raise UpdateFailed(f"{err} (connection: {self.api.stats})") from err
         self.failed_polls = 0
         self._count_hiccups()
+        self._retry_identity_later()
         if self._stuck_issue is not None:
             _LOGGER.warning("%s answers again", self.config_entry.data[CONF_HOST])
             self._clear_stuck()

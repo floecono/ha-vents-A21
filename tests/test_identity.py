@@ -84,3 +84,27 @@ async def test_identifier_on_the_device(
     assert entry.runtime_data.serial == "0020003A3032510E"
     device = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)[0]
     assert device.serial_number == "0020003A3032510E"
+
+
+async def test_identity_learned_after_setup(
+    hass: HomeAssistant, entry: MockConfigEntry, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An identifier missing at set-up is asked again and lands on the device."""
+    from homeassistant.helpers import device_registry as dr
+
+    coordinator = entry.runtime_data
+    assert coordinator.serial is None
+
+    async def answers(*_args, **_kwargs) -> str:
+        return "0020003A3032510E"
+
+    monkeypatch.setattr(
+        "custom_components.vents_a21.coordinator.async_read_identifier", answers
+    )
+    monkeypatch.setattr("custom_components.vents_a21.coordinator.IDENTITY_RETRY", 0)
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert coordinator.serial == "0020003A3032510E"
+    device = dr.async_get(hass).async_get_device({("vents_a21", entry.entry_id)})
+    assert device is not None
+    assert device.serial_number == "0020003A3032510E"
