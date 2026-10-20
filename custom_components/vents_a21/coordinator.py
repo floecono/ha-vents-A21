@@ -25,6 +25,7 @@ from .const import (
     CONF_MANUAL_BYPASS,
     CONF_MODEL,
     CONF_UNIT_ID,
+    DEFAULT_KEEP_CONNECTION,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_UNIT_ID,
     DOMAIN,
@@ -88,7 +89,9 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
             entry.data[CONF_HOST],
             entry.data[CONF_PORT],
             entry.data.get(CONF_UNIT_ID, DEFAULT_UNIT_ID),
-            keep_connection=bool(entry.options.get(CONF_KEEP_CONNECTION)),
+            keep_connection=bool(
+                entry.options.get(CONF_KEEP_CONNECTION, DEFAULT_KEEP_CONNECTION)
+            ),
         )
         self.api.ignored_codes = ignored_codes(entry)
         self.model: Model = MODELS.get(

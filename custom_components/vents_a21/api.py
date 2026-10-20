@@ -266,19 +266,18 @@ _Reader = Callable[[int, int], Awaitable[Sequence[int | bool]]]
 class A21Api:
     """Serialised access to one A21 controller.
 
-    By default a TCP connection is opened for each poll or write and closed
-    right after, the way the manufacturer's own tools talk to the unit.
-    Keeping one connection open across polls (keep_connection) looked
-    better on paper, but on the Wi-Fi module of a DF 350 (firmware 0.43)
-    the bridge between the module and the controller froze twice within
-    days, the second time two hours after a power cycle, each time after a
-    burst of leaked AT commands and lost packets on the long-lived
-    connection; with a connection per poll the same unit ran for days. The
-    option stays for units that behave differently.
+    Two modes. keep_connection (the default): one TCP connection is kept
+    across polls and writes, stray AT text leaked by the module is ignored
+    without closing it. Otherwise a connection is opened for each poll or
+    write and closed right after, the way the manufacturer's own tools
+    talk to the unit. On a DF 350 (firmware 0.43) the module froze twice
+    while the kept connection was closed and reopened at every stray text
+    (0.2.11); whether keeping it open for good, as now, avoids the freeze
+    is what the default is testing. The per-poll mode remains an option.
     """
 
     def __init__(
-        self, host: str, port: int, unit_id: int, keep_connection: bool = False
+        self, host: str, port: int, unit_id: int, keep_connection: bool = True
     ) -> None:
         self.host = host
         self.port = port

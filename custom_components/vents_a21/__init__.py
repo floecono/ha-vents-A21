@@ -17,7 +17,12 @@ from homeassistant.helpers.typing import ConfigType
 from homeassistant.loader import async_get_integration
 
 from . import services, websocket
-from .const import CONF_KEEP_CONNECTION, DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import (
+    CONF_KEEP_CONNECTION,
+    DEFAULT_KEEP_CONNECTION,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+)
 from .coordinator import A21ConfigEntry, A21Coordinator, ignored_codes
 
 PLATFORMS: list[Platform] = [
@@ -111,7 +116,9 @@ async def _async_entry_updated(hass: HomeAssistant, entry: A21ConfigEntry) -> No
     coordinator.set_normal_interval(
         timedelta(seconds=entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
     )
-    coordinator.api.keep_connection = bool(entry.options.get(CONF_KEEP_CONNECTION))
+    coordinator.api.keep_connection = bool(
+        entry.options.get(CONF_KEEP_CONNECTION, DEFAULT_KEEP_CONNECTION)
+    )
     codes = ignored_codes(entry)
     if codes != coordinator.api.ignored_codes:
         coordinator.api.ignored_codes = codes

@@ -141,7 +141,7 @@ async def test_options(
     assert entry.options == {
         CONF_SCAN_INTERVAL: 30,
         "manual_bypass": False,
-        "keep_connection": False,
+        "keep_connection": True,
     }
     assert entry.runtime_data.update_interval.total_seconds() == 30
 

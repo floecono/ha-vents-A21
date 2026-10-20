@@ -361,12 +361,14 @@ async def test_link_hiccups_counter(
     assert hass.states.get(entity_id).attributes["stray_events"] == 1
 
 
-async def test_connection_per_poll_by_default(
+async def test_connection_per_poll_option(
     hass: HomeAssistant, simulator: A21Simulator, entry: MockConfigEntry
 ) -> None:
-    """Without the option, each poll opens and closes its own connection."""
+    """With the option off, each poll opens and closes its own connection."""
     coordinator = entry.runtime_data
-    assert not coordinator.api.keep_connection
+    assert coordinator.api.keep_connection  # the default
+    coordinator.api.keep_connection = False
+    await coordinator.async_refresh()
     before = simulator.connections
     await coordinator.async_refresh()
     await coordinator.async_refresh()

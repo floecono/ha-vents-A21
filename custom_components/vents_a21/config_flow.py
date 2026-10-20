@@ -33,6 +33,7 @@ from .const import (
     CONF_MANUAL_BYPASS,
     CONF_MODEL,
     CONF_UNIT_ID,
+    DEFAULT_KEEP_CONNECTION,
     DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_UNIT_ID,
@@ -226,7 +227,11 @@ class A21OptionsFlow(OptionsFlow):
                     ): BooleanSelector(),
                     vol.Required(
                         CONF_KEEP_CONNECTION,
-                        default=bool(self.config_entry.options.get(CONF_KEEP_CONNECTION)),
+                        default=bool(
+                            self.config_entry.options.get(
+                                CONF_KEEP_CONNECTION, DEFAULT_KEEP_CONNECTION
+                            )
+                        ),
                     ): BooleanSelector(),
                 }
             ),

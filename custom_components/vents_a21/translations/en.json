@@ -76,7 +76,7 @@
         "data_description": {
           "scan_interval": "Time between two reads of the unit (30 s by default).",
           "manual_bypass": "Tick if you drive the bypass yourself (card, automations). The unit's “Bypass in manual mode” warning is then no longer reported, neither on the cards nor by the alarm sensors. Mind that without a preheater, the bypass is what protects the exchanger from frost: switch back to automatic in winter.",
-          "keep_connection": "Unchecked (recommended): one connection per poll, as the manufacturer's tools do. Checked: a single connection kept between polls. On a DF 350 (firmware 0.43) the kept connection froze the Wi-Fi module twice; enable it only to experiment."
+          "keep_connection": "Checked (default): a single connection kept between polls, stray text from the module ignored without closing it. Unchecked: one connection per poll, as the manufacturer's tools do. Switch it if the unit keeps freezing, to compare."
         }
       }
     }
