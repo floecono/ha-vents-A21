@@ -16,6 +16,9 @@ CONF_MODEL: Final = "model"
 CONF_ADVANCED: Final = "advanced"
 # Password of the unit in the mobile app, used once to ask it its identifier.
 CONF_DEVICE_PASSWORD: Final = "device_password"
+# Identifier of the Wi-Fi module once learnt, kept in the entry so a
+# reload where the module stays silent over UDP does not lose it.
+CONF_SERIAL: Final = "serial_number"
 # Option: the bypass is driven from Home Assistant, so the warning the unit
 # raises while its bypass is in manual mode is expected and is not reported.
 CONF_MANUAL_BYPASS: Final = "manual_bypass"

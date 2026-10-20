@@ -24,6 +24,7 @@ from .const import (
     CONF_KEEP_CONNECTION,
     CONF_MANUAL_BYPASS,
     CONF_MODEL,
+    CONF_SERIAL,
     CONF_UNIT_ID,
     DEFAULT_KEEP_CONNECTION,
     DEFAULT_SCAN_INTERVAL,
@@ -120,7 +121,7 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         # Identifier of the Wi-Fi module, the one the app shows, asked over
         # the app protocol (async_learn_identity). The serial number of the
         # unit for all practical purposes.
-        self.serial: str | None = None
+        self.serial: str | None = entry.data.get(CONF_SERIAL) or None
         self._identity_asked_at = -float("inf")
         self._identity_task: asyncio.Task | None = None
 
@@ -137,6 +138,10 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
             return
         self.serial = serial
         _LOGGER.debug("%s identifies itself as %s", host, serial)
+        if self.config_entry.data.get(CONF_SERIAL) != serial:
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, data={**self.config_entry.data, CONF_SERIAL: serial}
+            )
         # Entities already created carry the device info of the time: update
         # the device registry so the page of the unit shows the number.
         registry = dr.async_get(self.hass)

@@ -108,3 +108,34 @@ async def test_identity_learned_after_setup(
     device = dr.async_get(hass).async_get_device({("vents_a21", entry.entry_id)})
     assert device is not None
     assert device.serial_number == "0020003A3032510E"
+
+
+async def test_serial_survives_a_silent_reload(
+    hass: HomeAssistant, entry: MockConfigEntry, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A number learnt once is kept when the module stays silent later."""
+    from homeassistant.helpers import device_registry as dr
+
+    coordinator = entry.runtime_data
+
+    async def answers(*_args, **_kwargs) -> str:
+        return "0020003A3032510E"
+
+    monkeypatch.setattr(
+        "custom_components.vents_a21.coordinator.async_read_identifier", answers
+    )
+    await coordinator.async_learn_identity()
+    assert entry.data["serial_number"] == "0020003A3032510E"
+
+    async def silent(*_args, **_kwargs) -> None:
+        return None
+
+    monkeypatch.setattr(
+        "custom_components.vents_a21.coordinator.async_read_identifier", silent
+    )
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.runtime_data.serial == "0020003A3032510E"
+    device = dr.async_get(hass).async_get_device({("vents_a21", entry.entry_id)})
+    assert device is not None
+    assert device.serial_number == "0020003A3032510E"
