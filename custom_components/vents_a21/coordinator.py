@@ -12,6 +12,7 @@ from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -43,6 +44,11 @@ _LOGGER = logging.getLogger(__name__)
 # moment, should not blank the dashboard and trip automations.
 RETRY_DELAY = 1.0
 TOLERATED_FAILURES = 3
+# After this many consecutive failed polls (each on a fresh connection), the
+# module is asked over the app protocol as well; silence there too means it
+# is frozen and only a power cycle brings it back: a repair says so.
+FROZEN_AFTER = 6
+ISSUE_FROZEN = "module_frozen"
 
 type A21ConfigEntry = ConfigEntry[A21Coordinator]
 
@@ -81,6 +87,7 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         # unit is unloaded so they can subscribe again.
         self.detail_watchers: set[Callable[[], None]] = set()
         self.failed_polls = 0
+        self._frozen_reported = False
         # Spare filters at home; loaded by async_setup_entry.
         self.filters = FilterStock(hass, entry.entry_id, self.model)
         self._filter_days: int | None = None
@@ -149,10 +156,52 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
                     err,
                 )
                 return self.data
-            raise UpdateFailed(str(err)) from err
+            if self.failed_polls >= FROZEN_AFTER:
+                await self._async_check_frozen()
+            raise UpdateFailed(f"{err} (connection: {self.api.stats})") from err
         self.failed_polls = 0
+        if self._frozen_reported:
+            self._frozen_reported = False
+            ir.async_delete_issue(self.hass, DOMAIN, self._issue_id)
         self._track_filter_change(data)
         return data
+
+    @property
+    def _issue_id(self) -> str:
+        return f"{ISSUE_FROZEN}_{self.config_entry.entry_id}"
+
+    async def _async_check_frozen(self) -> None:
+        """Tell the owner when the Wi-Fi module no longer answers anything.
+
+        A module whose network stack still accepts TCP connections but whose
+        bridge to the controller is dead answers neither Modbus nor the
+        app protocol (UDP). Nothing software can revive it; the owner has to
+        cut the power of the unit for a few seconds. Seen on firmware 0.43.
+        """
+        if self._frozen_reported:
+            return
+        host = self.config_entry.data[CONF_HOST]
+        password = self.config_entry.data.get(
+            CONF_DEVICE_PASSWORD, DEFAULT_DEVICE_PASSWORD
+        )
+        if await async_read_identifier(host, password) is not None:
+            return
+        self._frozen_reported = True
+        _LOGGER.warning(
+            "%s answers neither Modbus nor the app protocol: the Wi-Fi module "
+            "looks frozen, a power cycle of the unit is needed (%s)",
+            host,
+            self.api.stats,
+        )
+        ir.async_create_issue(
+            self.hass,
+            DOMAIN,
+            self._issue_id,
+            is_fixable=False,
+            severity=ir.IssueSeverity.ERROR,
+            translation_key=ISSUE_FROZEN,
+            translation_placeholders={"name": self.device_name, "host": host},
+        )
 
     async def _poll_twice(self) -> A21Data:
         try:

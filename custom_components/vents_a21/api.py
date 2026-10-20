@@ -330,6 +330,11 @@ class A21Api:
             await asyncio.sleep(_SETTLE_DELAY)
             return await self._read_all()
 
+    @property
+    def stats(self) -> dict:
+        """Counters of the connection, for diagnostics and error messages."""
+        return self._client.stats.as_dict()
+
     async def async_close(self) -> None:
         """Close the connection, when the unit is unloaded or Home Assistant stops."""
         async with self._lock:

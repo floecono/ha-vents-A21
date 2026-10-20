@@ -709,5 +709,11 @@
         }
       }
     }
+  },
+  "issues": {
+    "module_frozen": {
+      "title": "The Wi-Fi module of {name} no longer answers",
+      "description": "The unit {name} ({host}) accepts connections but no longer answers, neither over Modbus nor over the app protocol. Its Wi-Fi module is frozen; no command can revive it. Cut the power of the unit for a few seconds and restore it: Home Assistant will find it again by itself and this message will go away. If it happens again, check the Wi-Fi signal where the unit is installed."
+    }
   }
 }

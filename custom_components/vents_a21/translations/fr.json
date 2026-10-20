@@ -709,5 +709,11 @@
         }
       }
     }
+  },
+  "issues": {
+    "module_frozen": {
+      "title": "Le module Wi-Fi de {name} ne répond plus",
+      "description": "La machine {name} ({host}) accepte les connexions mais ne répond plus, ni en Modbus ni au protocole de l'application. Son module Wi-Fi est figé ; aucune commande ne peut le relancer. Coupez l'alimentation de la machine quelques secondes puis remettez-la : Home Assistant la retrouvera de lui-même et ce message disparaîtra. Si cela se reproduit, vérifiez la qualité du signal Wi-Fi à l'emplacement de la machine."
+    }
   }
 }

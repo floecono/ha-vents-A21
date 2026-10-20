@@ -24,6 +24,7 @@ async def async_get_config_entry_diagnostics(
             "data": {**entry.data, CONF_HOST: "**REDACTED**"},
             "options": dict(entry.options),
         },
+        "connection": entry.runtime_data.api.stats,
         "firmware": data.firmware,
         "alarm_codes": data.alarm_codes,
         "coils": table(data.coils),

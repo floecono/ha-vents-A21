@@ -251,3 +251,50 @@ async def test_one_connection_is_kept(
     await hass.async_block_till_done()
     assert not coordinator.api._client.connected
 
+
+
+async def test_stray_bytes_are_skipped(
+    hass: HomeAssistant, simulator: A21Simulator, entry: MockConfigEntry
+) -> None:
+    """AT commands leaked into the stream are dropped; the connection is kept."""
+    coordinator = entry.runtime_data
+    before = simulator.connections
+    simulator.stray = b"AT+RFPOWER=78\r\nOK\r\n"
+    await coordinator.async_refresh()
+    assert coordinator.last_update_success
+    assert simulator.connections == before
+    stats = coordinator.api.stats
+    assert stats["stray_events"] == 1
+    assert stats["stray_bytes"] == len(b"AT+RFPOWER=78\r\nOK\r\n")
+    assert stats["last_stray"].startswith("AT+RFPOWER")
+
+
+async def test_frozen_module_raises_a_repair(
+    hass: HomeAssistant,
+    simulator: A21Simulator,
+    entry: MockConfigEntry,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A module silent on Modbus and on the app protocol is reported as frozen."""
+    from homeassistant.helpers import issue_registry as ir
+
+    from custom_components.vents_a21.coordinator import FROZEN_AFTER
+
+    coordinator = entry.runtime_data
+    coordinator.api._client.timeout = 0.2
+    monkeypatch.setattr(
+        "custom_components.vents_a21.coordinator.RETRY_DELAY", 0.01
+    )
+    simulator.frozen = True
+    issue_id = f"module_frozen_{entry.entry_id}"
+    for _ in range(FROZEN_AFTER):
+        assert ir.async_get(hass).async_get_issue("vents_a21", issue_id) is None
+        await coordinator.async_refresh()
+    issue = ir.async_get(hass).async_get_issue("vents_a21", issue_id)
+    assert issue is not None
+    assert issue.severity == ir.IssueSeverity.ERROR
+    # Power cycled: the unit answers again and the repair goes away.
+    simulator.frozen = False
+    await coordinator.async_refresh()
+    assert coordinator.last_update_success
+    assert ir.async_get(hass).async_get_issue("vents_a21", issue_id) is None
