@@ -93,7 +93,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: A21ConfigEntry) -> bool:
     coordinator = A21Coordinator(hass, entry)
     await coordinator.filters.async_load()
     await coordinator.async_config_entry_first_refresh()
-    await coordinator.async_learn_identity()
+    # Known from an earlier run: no need to delay the start with a question
+    # the module may not answer right behind the first poll; the periodic
+    # retry asks when it is missing.
+    if coordinator.serial is None:
+        await coordinator.async_learn_identity()
     entry.runtime_data = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

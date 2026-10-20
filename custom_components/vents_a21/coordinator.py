@@ -63,6 +63,8 @@ STUCK_INTERVAL = timedelta(minutes=10)
 HICCUP_WINDOW = 24 * 3600
 # A missing identifier is asked again this often (seconds).
 IDENTITY_RETRY = 600
+# Seconds left between a poll and the next question over UDP.
+IDENTITY_DELAY = 5
 
 type A21ConfigEntry = ConfigEntry[A21Coordinator]
 
@@ -125,13 +127,20 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         self._identity_asked_at = -float("inf")
         self._identity_task: asyncio.Task | None = None
 
-    async def async_learn_identity(self) -> None:
-        """Ask the unit for its identifier, over the protocol of the app."""
+    async def async_learn_identity(self, delay: float = 0) -> None:
+        """Ask the unit for its identifier, over the protocol of the app.
+
+        The bridge in the Wi-Fi module serves one thing at a time: a
+        datagram arriving right behind a Modbus poll can be dropped. The
+        retries therefore wait a few seconds after the poll (delay).
+        """
         host = self.config_entry.data[CONF_HOST]
         password = self.config_entry.data.get(
             CONF_DEVICE_PASSWORD, DEFAULT_DEVICE_PASSWORD
         )
         self._identity_asked_at = time.monotonic()
+        if delay:
+            await asyncio.sleep(delay)
         serial = await async_read_identifier(host, password)
         if serial is None:
             _LOGGER.debug("%s did not give its identifier over UDP", host)
@@ -168,8 +177,10 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
             return
         # Tasks may run eagerly, so the attribute is read with done() above
         # rather than cleared by the task itself.
-        self._identity_task = self.config_entry.async_create_task(
-            self.hass, self.async_learn_identity(), name=f"{DOMAIN} identity"
+        self._identity_task = self.config_entry.async_create_background_task(
+            self.hass,
+            self.async_learn_identity(delay=IDENTITY_DELAY),
+            name=f"{DOMAIN} identity",
         )
 
     @property

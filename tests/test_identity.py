@@ -102,7 +102,9 @@ async def test_identity_learned_after_setup(
         "custom_components.vents_a21.coordinator.async_read_identifier", answers
     )
     monkeypatch.setattr("custom_components.vents_a21.coordinator.IDENTITY_RETRY", 0)
+    monkeypatch.setattr("custom_components.vents_a21.coordinator.IDENTITY_DELAY", 0)
     await coordinator.async_refresh()
+    await coordinator._identity_task
     await hass.async_block_till_done()
     assert coordinator.serial == "0020003A3032510E"
     device = dr.async_get(hass).async_get_device({("vents_a21", entry.entry_id)})
