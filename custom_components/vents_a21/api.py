@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 
@@ -24,6 +25,11 @@ from .const import (
     IR_DEVICE_TYPE,
     IR_FIRMWARE,
     IR_PREHEATER_OUTPUT,
+    IR_EXTRACT_RPM,
+    IR_RH_EXT,
+    IR_RH_INT,
+    IR_SUPPLY_RPM,
+    IR_TEMP_EXHAUST,
     IR_TEMP_EXTRACT,
     IR_TEMP_OUTDOOR,
     IR_TEMP_SUPPLY,
@@ -60,6 +66,16 @@ EFFICIENCY_HEATING = "heating"
 EFFICIENCY_COOLING = "cooling"
 EFFICIENCY_PREHEATING = "preheating"
 EFFICIENCY_SMALL_DIFFERENCE = "small_difference"
+# The supply fan is stopped while the extract fan runs: frost protection by
+# fan stop (or its second stage behind a bypass that does not cope). The
+# supply probe then sees still air and every figure is meaningless.
+EFFICIENCY_DEFROSTING = "defrosting"
+
+# Without a humidity probe, exhaust air this cold is taken to be condensing:
+# the dew point of indoor air in winter sits between 6 and 10 °C.
+CONDENSATION_GUESS_BELOW = 8.0
+# Margin under the dew point: the plates are colder than the air leaving them.
+CONDENSATION_MARGIN = 1.0
 # Time the controller gets to apply a write before the state is read back.
 _SETTLE_DELAY = 0.3
 # The controller accepts a single TCP client; right after a disconnection it
@@ -200,9 +216,21 @@ class A21Data:
             return EFFICIENCY_COOLING
         if self.inputs[IR_PREHEATER_OUTPUT]:
             return EFFICIENCY_PREHEATING
+        if self.defrosting:
+            return EFFICIENCY_DEFROSTING
         if difference < MIN_EFFICIENCY_DELTA:
             return EFFICIENCY_SMALL_DIFFERENCE
         return EFFICIENCY_MEASURED
+
+    @property
+    def defrosting(self) -> bool:
+        """True while the supply fan is stopped and the extract fan runs.
+
+        Frost protection by fan stop, or the second stage the firmware adds
+        behind a bypass that does not cope. Only known with tachometers.
+        """
+        supply, extract = self.inputs[IR_SUPPLY_RPM], self.inputs[IR_EXTRACT_RPM]
+        return bool(extract) and supply == 0
 
     @property
     def efficiency(self) -> int | None:
@@ -225,6 +253,96 @@ class A21Data:
             return None
         ratio = (supply - outdoor) / (extract - outdoor)
         return round(min(max(ratio, 0.0), 1.0) * 100)
+
+    @property
+    def efficiency_exhaust_side(self) -> int | None:
+        """Return the exhaust-side temperature ratio in percent.
+
+        (extract - exhaust) / (extract - outdoor): how much of its heat the
+        extract air gave up. Equal to the supply-side figure with balanced
+        flows; the two drift apart when they are not. Condensation on the
+        extract side (latent heat) lowers it: see condensation_likely.
+        """
+        outdoor = self.temperature(IR_TEMP_OUTDOOR)
+        extract = self.temperature(IR_TEMP_EXTRACT)
+        exhaust = self.temperature(IR_TEMP_EXHAUST)
+        if (
+            outdoor is None
+            or extract is None
+            or exhaust is None
+            or self.efficiency_status != EFFICIENCY_MEASURED
+        ):
+            return None
+        ratio = (extract - exhaust) / (extract - outdoor)
+        return round(min(max(ratio, 0.0), 1.0) * 100)
+
+    @property
+    def flow_ratio(self) -> float | None:
+        """Return the apparent extract/supply flow ratio from the four probes.
+
+        The heat the extract air gives up is the heat the supply air takes:
+        extract flow x (extract - exhaust) = supply flow x (supply - outdoor),
+        so the ratio of the flows is the ratio of the temperature rises. It
+        is the ratio of the real flows, whatever the fan settings, and it
+        follows filter clogging. Only sensible heat is counted: with
+        condensation on the extract side the figure comes out low (see
+        condensation_likely). None when the efficiency is not measurable or
+        when the exhaust-side rise is too small to divide by.
+        """
+        outdoor = self.temperature(IR_TEMP_OUTDOOR)
+        supply = self.temperature(IR_TEMP_SUPPLY)
+        extract = self.temperature(IR_TEMP_EXTRACT)
+        exhaust = self.temperature(IR_TEMP_EXHAUST)
+        if (
+            outdoor is None
+            or supply is None
+            or extract is None
+            or exhaust is None
+            or self.efficiency_status != EFFICIENCY_MEASURED
+        ):
+            return None
+        given_up = extract - exhaust
+        taken = supply - outdoor
+        if given_up < 1.0 or taken < 0:
+            return None
+        return round(taken / given_up, 2)
+
+    @property
+    def indoor_humidity(self) -> int | None:
+        """Relative humidity of the extract air, from either probe, or None."""
+        for address in (IR_RH_INT, IR_RH_EXT):
+            value = self.inputs[address]
+            if value:
+                return value
+        return None
+
+    @property
+    def dew_point(self) -> float | None:
+        """Dew point of the extract air in °C (Magnus), None without humidity."""
+        extract = self.temperature(IR_TEMP_EXTRACT)
+        humidity = self.indoor_humidity
+        if extract is None or humidity is None:
+            return None
+        a, b = 17.62, 243.12
+        gamma = math.log(humidity / 100) + a * extract / (b + extract)
+        return round(b * gamma / (a - gamma), 1)
+
+    @property
+    def condensation_likely(self) -> bool | None:
+        """Whether the extract air is condensing in the exchanger.
+
+        With a humidity probe: the exhaust air is at or under the dew point
+        of the extract air (plus a margin, the plates being colder than the
+        air leaving them). Without one: the exhaust air is simply cold.
+        None without an exhaust probe.
+        """
+        exhaust = self.temperature(IR_TEMP_EXHAUST)
+        if exhaust is None:
+            return None
+        dew_point = self.dew_point
+        if dew_point is None:
+            return exhaust < CONDENSATION_GUESS_BELOW
+        return exhaust < dew_point + CONDENSATION_MARGIN
 
     @property
     def timer_remaining(self) -> int | None:
