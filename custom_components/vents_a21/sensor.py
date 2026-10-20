@@ -463,10 +463,52 @@ async def async_setup_entry(
     """Set up the sensors this unit actually has."""
     coordinator = entry.runtime_data
     async_add_entities(
-        A21Sensor(coordinator, description)
-        for description in SENSORS
-        if description.exists_fn(coordinator.data)
+        [
+            *(
+                A21Sensor(coordinator, description)
+                for description in SENSORS
+                if description.exists_fn(coordinator.data)
+            ),
+            A21LinkHiccupsSensor(coordinator),
+        ]
     )
+
+
+class A21LinkHiccupsSensor(A21Entity, SensorEntity):
+    """Lost answers and stray bytes on the link over the last 24 hours.
+
+    An indirect reading of the Wi-Fi quality where the unit stands (the
+    unit itself does not report its signal level): a handful a day is
+    normal, dozens point at a weak signal. Off by default.
+    """
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:wifi-strength-alert-outline"
+
+    def __init__(self, coordinator: A21Coordinator) -> None:
+        """Initialise the counter."""
+        super().__init__(coordinator, "link_hiccups")
+
+    @property
+    def available(self) -> bool:
+        """The counter stays readable while the unit is unreachable."""
+        return True
+
+    @property
+    def native_value(self) -> int:
+        """Return the number of hiccups over the last 24 hours."""
+        return self.coordinator.hiccups_24h
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the raw counters and the last app-protocol probe."""
+        return {
+            **self.coordinator.api.stats,
+            "stuck": self.coordinator.stuck,
+            "last_app_protocol_probe": self.coordinator.last_probe,
+        }
 
 
 class A21Sensor(A21Entity, SensorEntity):

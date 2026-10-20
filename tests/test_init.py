@@ -297,11 +297,68 @@ async def test_frozen_module_raises_a_repair(
     issue = ir.async_get(hass).async_get_issue("vents_a21", issue_id)
     assert issue is not None
     assert issue.severity == ir.IssueSeverity.ERROR
-    # Power cycled: the unit answers again and the repair goes away.
+    # Stuck: one attempt every ten minutes instead of every poll.
+    from custom_components.vents_a21.coordinator import STUCK_INTERVAL
+
+    assert coordinator.update_interval == STUCK_INTERVAL
+    assert coordinator.stuck == "module_frozen"
+    # Power cycled: the unit answers again, the repair goes away and the
+    # normal cadence is back.
     simulator.frozen = False
     await coordinator.async_refresh()
     assert coordinator.last_update_success
     assert ir.async_get(hass).async_get_issue("vents_a21", issue_id) is None
+    assert coordinator.update_interval != STUCK_INTERVAL
+    assert coordinator.stuck is None
+
+
+async def test_modbus_stuck_but_app_alive(
+    hass: HomeAssistant,
+    simulator: A21Simulator,
+    entry: MockConfigEntry,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A module that still answers the app protocol gets the other repair."""
+    from homeassistant.helpers import issue_registry as ir
+
+    from custom_components.vents_a21.coordinator import FROZEN_AFTER
+
+    async def alive(*_args, **_kwargs) -> dict[str, str]:
+        return {"identifier": "0020003A3032510E", "device_type": "1"}
+
+    monkeypatch.setattr("custom_components.vents_a21.coordinator.async_probe", alive)
+    coordinator = entry.runtime_data
+    coordinator.api._client.timeout = 0.2
+    monkeypatch.setattr("custom_components.vents_a21.coordinator.RETRY_DELAY", 0.01)
+    simulator.frozen = True
+    for _ in range(FROZEN_AFTER):
+        await coordinator.async_refresh()
+    assert coordinator.stuck == "modbus_stuck"
+    assert coordinator.last_probe == {"identifier": "0020003A3032510E", "device_type": "1"}
+    assert ir.async_get(hass).async_get_issue("vents_a21", f"modbus_stuck_{entry.entry_id}")
+    assert ir.async_get(hass).async_get_issue("vents_a21", f"module_frozen_{entry.entry_id}") is None
+
+
+async def test_link_hiccups_counter(
+    hass: HomeAssistant, simulator: A21Simulator, entry: MockConfigEntry
+) -> None:
+    """The diagnostic counter follows lost answers and stray bytes."""
+    from homeassistant.helpers import entity_registry as er
+
+    coordinator = entry.runtime_data
+    entity_id = f"sensor.{PREFIX}_link_hiccups_24_h"
+    registry = er.async_get(hass)
+    assert registry.async_get(entity_id) is not None
+    registry.async_update_entity(entity_id, disabled_by=None)
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    coordinator = entry.runtime_data
+    assert hass.states.get(entity_id).state == "0"
+    simulator.stray = b"AT+CIPSEND\r\n"
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id).state == "1"
+    assert hass.states.get(entity_id).attributes["stray_events"] == 1
 
 
 async def test_connection_per_poll_by_default(

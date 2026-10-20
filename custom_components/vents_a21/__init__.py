@@ -108,8 +108,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: A21ConfigEntry) -> bool
 async def _async_entry_updated(hass: HomeAssistant, entry: A21ConfigEntry) -> None:
     """Apply new options without reloading the entry."""
     coordinator = entry.runtime_data
-    coordinator.update_interval = timedelta(
-        seconds=entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    coordinator.set_normal_interval(
+        timedelta(seconds=entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
     )
     coordinator.api.keep_connection = bool(entry.options.get(CONF_KEEP_CONNECTION))
     codes = ignored_codes(entry)

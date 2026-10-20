@@ -299,6 +299,9 @@
       },
       "cooler_output": {
         "name": "Puissance du refroidissement"
+      },
+      "link_hiccups": {
+        "name": "Accrocs de liaison (24 h)"
       }
     },
     "binary_sensor": {
@@ -715,7 +718,11 @@
   "issues": {
     "module_frozen": {
       "title": "Le module Wi-Fi de {name} ne répond plus",
-      "description": "La machine {name} ({host}) accepte les connexions mais ne répond plus, ni en Modbus ni au protocole de l'application. Son module Wi-Fi est figé ; aucune commande ne peut le relancer. Coupez l'alimentation de la machine quelques secondes puis remettez-la : Home Assistant la retrouvera de lui-même et ce message disparaîtra. Si cela se reproduit, vérifiez la qualité du signal Wi-Fi à l'emplacement de la machine."
+      "description": "La machine {name} ({host}) accepte les connexions mais ne répond plus, ni en Modbus ni au protocole de l'application. Son module Wi-Fi est figé ; aucune commande ne peut le relancer. L'intégration réessaie toutes les dix minutes. Coupez l'alimentation de la machine quelques secondes puis remettez-la : Home Assistant la retrouvera de lui-même et ce message disparaîtra. Si cela se reproduit, vérifiez la qualité du signal Wi-Fi à l'emplacement de la machine."
+    },
+    "modbus_stuck": {
+      "title": "La liaison Modbus de {name} est bloquée",
+      "description": "La machine {name} ({host}) répond encore à l'application mais plus au Modbus. L'intégration réessaie toutes les dix minutes. Si cela dure, coupez l'alimentation de la machine quelques secondes : au retour, Home Assistant la retrouvera de lui-même et ce message disparaîtra."
     }
   }
 }

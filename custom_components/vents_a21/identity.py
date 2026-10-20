@@ -25,22 +25,72 @@ _WILDCARD = b"DEFAULT_DEVICEID"
 _FUNC_READ = 0x01
 _FUNC_RESPONSE = 0x06
 _PARAM_SEARCH = 0x7C
+_PARAM_FIRMWARE = 0x86
+_PARAM_DEVICE_TYPE = 0xB9
 TIMEOUT = 3.0
 
 _ID_RE = re.compile(r"^[0-9A-Fa-f]{16}$")
 
 
-def build_search(password: str) -> bytes:
-    """Return the datagram asking the module for its identifier."""
+def build_read(password: str, params: bytes, device_id: bytes = _WILDCARD) -> bytes:
+    """Return the datagram reading the given parameters from a module."""
     pwd = password.encode()
     body = (
-        bytes([_PROTOCOL, len(_WILDCARD)])
-        + _WILDCARD
+        bytes([_PROTOCOL, len(device_id)])
+        + device_id
         + bytes([len(pwd)])
         + pwd
-        + bytes([_FUNC_READ, _PARAM_SEARCH])
+        + bytes([_FUNC_READ])
+        + params
     )
     return _HEADER + body + (sum(body) & 0xFFFF).to_bytes(2, "little")
+
+
+def build_search(password: str) -> bytes:
+    """Return the datagram asking the module for its identifier."""
+    return build_read(password, bytes([_PARAM_SEARCH]))
+
+
+def parse_answer(answer: bytes) -> tuple[str, dict[int, bytes]] | None:
+    """Return (device id, {parameter: value}) from an answer, or None.
+
+    Values are laid out as in the protocol: a parameter byte with a one-byte
+    value, FE n in front of an n-byte value, FF x switching the high byte of
+    the parameter, FD marking a parameter the module does not know.
+    """
+    if len(answer) < 8 or answer[:2] != _HEADER:
+        return None
+    body = answer[2:-2]
+    if (sum(body) & 0xFFFF) != int.from_bytes(answer[-2:], "little"):
+        return None
+    id_size = answer[3]
+    device_id = answer[4 : 4 + id_size].decode(errors="replace")
+    pos = 4 + id_size
+    pos += 1 + answer[pos]  # password
+    if pos >= len(answer) or answer[pos] != _FUNC_RESPONSE:
+        return None
+    data = answer[pos + 1 : -2]
+    values: dict[int, bytes] = {}
+    pos, high, size = 0, 0, 1
+    while pos < len(data):
+        marker = data[pos]
+        if marker == 0xFF and pos + 1 < len(data):
+            high = data[pos + 1]
+            pos += 2
+            continue
+        if marker == 0xFE and pos + 1 < len(data):
+            size = data[pos + 1]
+            pos += 2
+            continue
+        if marker == 0xFD and pos + 1 < len(data):
+            values[(high << 8) | data[pos + 1]] = b""
+            pos += 2
+            size = 1
+            continue
+        values[(high << 8) | marker] = data[pos + 1 : pos + 1 + size]
+        pos += 1 + size
+        size = 1
+    return device_id, values
 
 
 def parse_identifier(answer: bytes) -> str | None:
@@ -74,28 +124,73 @@ class _Search(asyncio.DatagramProtocol):
             self.answer.set_exception(exc)
 
 
-async def async_read_identifier(
-    host: str, password: str = DEFAULT_DEVICE_PASSWORD, port: int = APP_PORT
-) -> str | None:
-    """Ask the module at host for its identifier; None when it does not say."""
+async def _async_exchange(host: str, port: int, datagram: bytes) -> bytes | None:
+    """Send one datagram and return the answer, None on silence."""
     loop = asyncio.get_running_loop()
     try:
         transport, protocol = await loop.create_datagram_endpoint(
             _Search, remote_addr=(host, port)
         )
     except OSError as err:
-        _LOGGER.debug("Cannot ask %s for its identifier: %s", host, err)
+        _LOGGER.debug("Cannot send to %s: %s", host, err)
         return None
     try:
-        transport.sendto(build_search(password))
+        transport.sendto(datagram)
         async with asyncio.timeout(TIMEOUT):
-            answer = await protocol.answer
+            return await protocol.answer
     except (TimeoutError, OSError) as err:
-        _LOGGER.debug("No identifier from %s: %s", host, err or "no answer")
+        _LOGGER.debug("No answer from %s over UDP: %s", host, err or "silence")
         return None
     finally:
         transport.close()
+
+
+async def async_read_identifier(
+    host: str, password: str = DEFAULT_DEVICE_PASSWORD, port: int = APP_PORT
+) -> str | None:
+    """Ask the module at host for its identifier; None when it does not say."""
+    answer = await _async_exchange(host, port, build_search(password))
+    if answer is None:
+        return None
     identifier = parse_identifier(answer)
     if identifier is None:
         _LOGGER.debug("Unreadable identifier answer from %s: %s", host, answer.hex())
     return identifier
+
+
+async def async_probe(
+    host: str,
+    password: str = DEFAULT_DEVICE_PASSWORD,
+    device_id: str | None = None,
+    port: int = APP_PORT,
+) -> dict[str, str] | None:
+    """Ask the module what it still says over the app protocol.
+
+    Used when Modbus no longer answers: a module that answers here is alive
+    and only its Modbus path is stuck; one silent here too is frozen.
+    Returns the identifier, the device type and the firmware as text, or
+    None on silence.
+    """
+    target = device_id.encode() if device_id else _WILDCARD
+    datagram = build_read(
+        password, bytes([_PARAM_SEARCH, _PARAM_DEVICE_TYPE, _PARAM_FIRMWARE]), target
+    )
+    answer = await _async_exchange(host, port, datagram)
+    if answer is None:
+        return None
+    parsed = parse_answer(answer)
+    if parsed is None:
+        return {"raw": answer.hex()}
+    _, values = parsed
+    result: dict[str, str] = {}
+    if ident := values.get(_PARAM_SEARCH):
+        result["identifier"] = ident.decode(errors="replace")
+    if kind := values.get(_PARAM_DEVICE_TYPE):
+        result["device_type"] = str(int.from_bytes(kind, "little"))
+    if fw := values.get(_PARAM_FIRMWARE):
+        if len(fw) >= 6:
+            year = int.from_bytes(fw[4:6], "little")
+            result["firmware"] = f"{fw[0]}.{fw[1]} ({fw[2]:02d}/{fw[3]:02d}/{year})"
+        else:
+            result["firmware"] = fw.hex()
+    return result or {"raw": answer.hex()}

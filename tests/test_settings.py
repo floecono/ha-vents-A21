@@ -48,7 +48,7 @@ def test_every_entity_has_a_name(language: str) -> None:
     """Each entity the code can create is named in both languages."""
     names = json.loads((TRANSLATIONS / f"{language}.json").read_text())["entity"]
     wanted = {
-        "sensor": {d.key for d in sensor.SENSORS},
+        "sensor": {d.key for d in sensor.SENSORS} | {"link_hiccups"},
         "binary_sensor": {d.key for d in binary_sensor.BINARY_SENSORS},
         "switch": {d.key for d in switch.SWITCHES},
         "button": {d.key for d in button.BUTTONS},

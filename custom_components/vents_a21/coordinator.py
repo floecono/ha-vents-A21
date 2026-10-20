@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
+from collections import deque
 from collections.abc import Callable
 from datetime import timedelta
 
@@ -34,7 +36,7 @@ from .const import (
     Model,
 )
 from .filters import FilterStock
-from .identity import DEFAULT_DEVICE_PASSWORD, async_read_identifier
+from .identity import DEFAULT_DEVICE_PASSWORD, async_probe, async_read_identifier
 from .modbus import ModbusError, ModbusExceptionResponse
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,6 +52,13 @@ TOLERATED_FAILURES = 3
 # is frozen and only a power cycle brings it back: a repair says so.
 FROZEN_AFTER = 6
 ISSUE_FROZEN = "module_frozen"
+ISSUE_MODBUS_STUCK = "modbus_stuck"
+# Once the module is known to be stuck, hammering it every 30 s revives
+# nothing: one attempt every ten minutes, with a look over the app
+# protocol each time, until it answers again.
+STUCK_INTERVAL = timedelta(minutes=10)
+# Window of the "link hiccups" counter.
+HICCUP_WINDOW = 24 * 3600
 
 type A21ConfigEntry = ConfigEntry[A21Coordinator]
 
@@ -90,6 +99,15 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         self.detail_watchers: set[Callable[[], None]] = set()
         self.failed_polls = 0
         self._frozen_reported = False
+        self._stuck_issue: str | None = None
+        self._normal_interval = self.update_interval
+        # What the module last said over the app protocol while Modbus was
+        # silent (diagnostics).
+        self.last_probe: dict[str, str] | None = None
+        self.last_probe_at: float | None = None
+        # Link hiccups (lost answers, stray bytes) over the last 24 h.
+        self._hiccups: deque[float] = deque()
+        self._last_stats: dict | None = None
         # Spare filters at home; loaded by async_setup_entry.
         self.filters = FilterStock(hass, entry.entry_id, self.model)
         self._filter_days: int | None = None
@@ -158,52 +176,101 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
                     err,
                 )
                 return self.data
+            self._count_hiccups()
             if self.failed_polls >= FROZEN_AFTER:
-                await self._async_check_frozen()
+                await self._async_check_stuck()
             raise UpdateFailed(f"{err} (connection: {self.api.stats})") from err
         self.failed_polls = 0
-        if self._frozen_reported:
-            self._frozen_reported = False
-            ir.async_delete_issue(self.hass, DOMAIN, self._issue_id)
+        self._count_hiccups()
+        if self._stuck_issue is not None:
+            _LOGGER.warning("%s answers again", self.config_entry.data[CONF_HOST])
+            self._clear_stuck()
         self._track_filter_change(data)
         return data
 
+    @callback
+    def _count_hiccups(self) -> None:
+        """Keep a 24 h window of link hiccups from the connection counters."""
+        stats = self.api.stats
+        now = time.monotonic()
+        if self._last_stats is not None:
+            new = (stats["no_answer"] - self._last_stats["no_answer"]) + (
+                stats["stray_events"] - self._last_stats["stray_events"]
+            )
+            self._hiccups.extend([now] * max(0, new))
+        self._last_stats = stats
+        while self._hiccups and now - self._hiccups[0] > HICCUP_WINDOW:
+            self._hiccups.popleft()
+
     @property
-    def _issue_id(self) -> str:
-        return f"{ISSUE_FROZEN}_{self.config_entry.entry_id}"
+    def hiccups_24h(self) -> int:
+        """Lost answers and stray bytes seen over the last 24 hours."""
+        return len(self._hiccups)
 
-    async def _async_check_frozen(self) -> None:
-        """Tell the owner when the Wi-Fi module no longer answers anything.
+    @property
+    def stuck(self) -> str | None:
+        """Why the unit is unreachable: 'module_frozen', 'modbus_stuck' or None."""
+        return self._stuck_issue
 
-        A module whose network stack still accepts TCP connections but whose
-        bridge to the controller is dead answers neither Modbus nor the
-        app protocol (UDP). Nothing software can revive it; the owner has to
-        cut the power of the unit for a few seconds. Seen on firmware 0.43.
+    async def _async_check_stuck(self) -> None:
+        """Modbus has been silent for a while: look over the app protocol.
+
+        Silence there too means the Wi-Fi module is frozen (its network
+        stack still accepts TCP connections but the bridge to the controller
+        is dead; seen on firmware 0.43): only a power cycle of the unit
+        brings it back. An answer there means the module is alive and only
+        its Modbus path is stuck. Either way the owner is told through a
+        repair, and the unit is tried again every ten minutes instead of
+        every poll, with a look over the app protocol each time.
         """
-        if self._frozen_reported:
-            return
         host = self.config_entry.data[CONF_HOST]
         password = self.config_entry.data.get(
             CONF_DEVICE_PASSWORD, DEFAULT_DEVICE_PASSWORD
         )
-        if await async_read_identifier(host, password) is not None:
+        probe = await async_probe(host, password, self.serial)
+        self.last_probe, self.last_probe_at = probe, time.time()
+        key = ISSUE_MODBUS_STUCK if probe else ISSUE_FROZEN
+        if self._stuck_issue == key:
+            _LOGGER.info("%s still unreachable over Modbus; app protocol: %s", host, probe)
             return
-        self._frozen_reported = True
+        if self._stuck_issue is not None:
+            ir.async_delete_issue(self.hass, DOMAIN, self._issue_id(self._stuck_issue))
+        self._stuck_issue = key
+        self.update_interval = STUCK_INTERVAL
         _LOGGER.warning(
-            "%s answers neither Modbus nor the app protocol: the Wi-Fi module "
-            "looks frozen, a power cycle of the unit is needed (%s)",
+            "%s no longer answers over Modbus; app protocol: %s; trying every "
+            "%s from now on (%s)",
             host,
+            probe or "silent too, the Wi-Fi module looks frozen",
+            STUCK_INTERVAL,
             self.api.stats,
         )
         ir.async_create_issue(
             self.hass,
             DOMAIN,
-            self._issue_id,
+            self._issue_id(key),
             is_fixable=False,
             severity=ir.IssueSeverity.ERROR,
-            translation_key=ISSUE_FROZEN,
+            translation_key=key,
             translation_placeholders={"name": self.device_name, "host": host},
         )
+
+    def _issue_id(self, key: str) -> str:
+        return f"{key}_{self.config_entry.entry_id}"
+
+    @callback
+    def set_normal_interval(self, interval: timedelta) -> None:
+        """Apply a new polling interval from the options."""
+        self._normal_interval = interval
+        if self._stuck_issue is None:
+            self.update_interval = interval
+
+    @callback
+    def _clear_stuck(self) -> None:
+        if self._stuck_issue is not None:
+            ir.async_delete_issue(self.hass, DOMAIN, self._issue_id(self._stuck_issue))
+        self._stuck_issue = None
+        self.update_interval = self._normal_interval
 
     async def _poll_twice(self) -> A21Data:
         try:

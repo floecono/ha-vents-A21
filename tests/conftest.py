@@ -31,6 +31,7 @@ def _no_identity_query(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "custom_components.vents_a21.coordinator.async_read_identifier", nothing
     )
+    monkeypatch.setattr("custom_components.vents_a21.coordinator.async_probe", nothing)
 
 
 @pytest.fixture
