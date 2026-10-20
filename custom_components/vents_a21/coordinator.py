@@ -164,10 +164,9 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
     def _retry_identity_later(self) -> None:
         """Ask again for the identifier when it is still missing.
 
-        The question is asked once at set-up; if the module was still
-        booting, or Home Assistant started before the network was up, it
-        went unanswered. Ask again after a successful poll, at most every
-        IDENTITY_RETRY seconds.
+        Asked in the background IDENTITY_DELAY seconds after a successful
+        poll, then again at most every IDENTITY_RETRY seconds while it is
+        missing (module still booting, network not up, datagram lost).
         """
         if self.serial is not None:
             return

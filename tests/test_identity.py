@@ -80,7 +80,11 @@ async def test_identifier_on_the_device(
         return "0020003A3032510E" if password == "1111" else None
 
     monkeypatch.setattr("custom_components.vents_a21.coordinator.async_read_identifier", answer)
+    monkeypatch.setattr("custom_components.vents_a21.coordinator.IDENTITY_DELAY", 0)
     entry = await setup_entry(hass, simulator)
+    # Asked in the background after the first poll, never at set-up itself.
+    await entry.runtime_data._identity_task
+    await hass.async_block_till_done()
     assert entry.runtime_data.serial == "0020003A3032510E"
     device = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)[0]
     assert device.serial_number == "0020003A3032510E"
