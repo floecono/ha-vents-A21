@@ -19,6 +19,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .api import A21Api, A21Data, CoilWrite, RegisterWrite, Write
 from .const import (
     CONF_DEVICE_PASSWORD,
+    CONF_KEEP_CONNECTION,
     CONF_MANUAL_BYPASS,
     CONF_MODEL,
     CONF_UNIT_ID,
@@ -78,6 +79,7 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
             entry.data[CONF_HOST],
             entry.data[CONF_PORT],
             entry.data.get(CONF_UNIT_ID, DEFAULT_UNIT_ID),
+            keep_connection=bool(entry.options.get(CONF_KEEP_CONNECTION)),
         )
         self.api.ignored_codes = ignored_codes(entry)
         self.model: Model = MODELS.get(

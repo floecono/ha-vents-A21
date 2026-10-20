@@ -266,20 +266,25 @@ _Reader = Callable[[int, int], Awaitable[Sequence[int | bool]]]
 class A21Api:
     """Serialised access to one A21 controller.
 
-    One TCP connection is kept open across polls and writes. The Wi-Fi
-    module of the unit has a small embedded TCP stack with few sockets:
-    opening and closing a connection at every poll, on a link that loses
-    the odd packet, can leave it with half-closed sockets until it has none
-    left and answers nobody. A connection that goes stale is dropped at the
-    first failed request and reopened at the next poll. Only
-    async_identify, used once by the setup form, closes after itself.
+    By default a TCP connection is opened for each poll or write and closed
+    right after, the way the manufacturer's own tools talk to the unit.
+    Keeping one connection open across polls (keep_connection) looked
+    better on paper, but on the Wi-Fi module of a DF 350 (firmware 0.43)
+    the bridge between the module and the controller froze twice within
+    days, the second time two hours after a power cycle, each time after a
+    burst of leaked AT commands and lost packets on the long-lived
+    connection; with a connection per poll the same unit ran for days. The
+    option stays for units that behave differently.
     """
 
-    def __init__(self, host: str, port: int, unit_id: int) -> None:
+    def __init__(
+        self, host: str, port: int, unit_id: int, keep_connection: bool = False
+    ) -> None:
         self.host = host
         self.port = port
         self._client = ModbusTcpClient(host, port, unit_id)
         self._lock = asyncio.Lock()
+        self.keep_connection = keep_connection
         # Alarm codes left out of every snapshot (see CONF_MANUAL_BYPASS).
         self.ignored_codes: frozenset[int] = frozenset()
         # Number of readable addresses per table, learnt on older firmware.
@@ -311,24 +316,34 @@ class A21Api:
                     await self._client.close()
 
     async def async_poll(self) -> A21Data:
-        """Read every table, over the connection kept from the last time."""
+        """Read every table."""
         async with self._lock:
             await self._connect()
-            # On a transport or protocol error the client drops the socket
-            # itself; the next poll opens a fresh one.
-            return await self._read_all()
+            try:
+                # On a transport or protocol error the client drops the
+                # socket itself; the next poll opens a fresh one.
+                return await self._read_all()
+            finally:
+                if not self.keep_connection:
+                    await self._client.close()
 
     async def async_write(self, writes: Sequence[Write]) -> A21Data:
         """Apply writes in order, then return the state read back."""
         async with self._lock:
             await self._connect()
-            for write in writes:
-                if isinstance(write, CoilWrite):
-                    await self._client.write_coil(write.address, write.value)
-                else:
-                    await self._client.write_register(write.address, write.value)
-            await asyncio.sleep(_SETTLE_DELAY)
-            return await self._read_all()
+            try:
+                for write in writes:
+                    if isinstance(write, CoilWrite):
+                        await self._client.write_coil(write.address, write.value)
+                    else:
+                        await self._client.write_register(
+                            write.address, write.value
+                        )
+                await asyncio.sleep(_SETTLE_DELAY)
+                return await self._read_all()
+            finally:
+                if not self.keep_connection:
+                    await self._client.close()
 
     @property
     def stats(self) -> dict:

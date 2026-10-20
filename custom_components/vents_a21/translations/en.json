@@ -70,11 +70,13 @@
         "title": "Options",
         "data": {
           "scan_interval": "Polling interval",
-          "manual_bypass": "Bypass driven by Home Assistant"
+          "manual_bypass": "Bypass driven by Home Assistant",
+          "keep_connection": "Keep the Modbus connection open"
         },
         "data_description": {
-          "scan_interval": "Time between two readings of the unit (15 s by default).",
-          "manual_bypass": "Tick if you drive the bypass yourself (card, automations). The unit's “Bypass in manual mode” warning is then no longer reported, neither on the cards nor by the alarm sensors. Mind that without a preheater, the bypass is what protects the exchanger from frost: switch back to automatic in winter."
+          "scan_interval": "Time between two reads of the unit (30 s by default).",
+          "manual_bypass": "Tick if you drive the bypass yourself (card, automations). The unit's “Bypass in manual mode” warning is then no longer reported, neither on the cards nor by the alarm sensors. Mind that without a preheater, the bypass is what protects the exchanger from frost: switch back to automatic in winter.",
+          "keep_connection": "Unchecked (recommended): one connection per poll, as the manufacturer's tools do. Checked: a single connection kept between polls. On a DF 350 (firmware 0.43) the kept connection froze the Wi-Fi module twice; enable it only to experiment."
         }
       }
     }

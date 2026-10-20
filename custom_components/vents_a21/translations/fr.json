@@ -70,11 +70,13 @@
         "title": "Options",
         "data": {
           "scan_interval": "Intervalle de lecture",
-          "manual_bypass": "Bypass piloté par Home Assistant"
+          "manual_bypass": "Bypass piloté par Home Assistant",
+          "keep_connection": "Garder la connexion Modbus ouverte"
         },
         "data_description": {
-          "scan_interval": "Temps entre deux lectures de la machine (15 s par défaut).",
-          "manual_bypass": "Cochez si vous pilotez le bypass vous-même (tuile, automatisations). L'avertissement « Bypass en mode manuel » de la machine n'est alors plus signalé, ni dans les tuiles ni dans les capteurs d'alarme. Attention : sans préchauffage, c'est le bypass qui protège l'échangeur du gel ; en hiver, repassez en automatique."
+          "scan_interval": "Temps entre deux lectures de la machine (30 s par défaut).",
+          "manual_bypass": "Cochez si vous pilotez le bypass vous-même (tuile, automatisations). L'avertissement « Bypass en mode manuel » de la machine n'est alors plus signalé, ni dans les tuiles ni dans les capteurs d'alarme. Attention : sans préchauffage, c'est le bypass qui protège l'échangeur du gel ; en hiver, repassez en automatique.",
+          "keep_connection": "Décoché (recommandé) : une connexion par lecture, comme les outils du constructeur. Coché : une seule connexion gardée entre les lectures. Sur une DF 350 (micrologiciel 0.43), la connexion gardée a fait figer le module Wi-Fi à deux reprises ; ne l'activez que pour essayer."
         }
       }
     }

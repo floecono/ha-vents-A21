@@ -238,8 +238,10 @@ async def test_unload(hass: HomeAssistant, entry: MockConfigEntry) -> None:
 async def test_one_connection_is_kept(
     hass: HomeAssistant, simulator: A21Simulator, entry: MockConfigEntry
 ) -> None:
-    """Polls and writes reuse one TCP connection instead of opening one each."""
+    """With the option on, polls and writes reuse one TCP connection."""
     coordinator = entry.runtime_data
+    coordinator.api.keep_connection = True
+    await coordinator.async_refresh()
     before = simulator.connections
     await coordinator.async_refresh()
     await coordinator.async_refresh()
@@ -258,6 +260,8 @@ async def test_stray_bytes_are_skipped(
 ) -> None:
     """AT commands leaked into the stream are dropped; the connection is kept."""
     coordinator = entry.runtime_data
+    coordinator.api.keep_connection = True
+    await coordinator.async_refresh()
     before = simulator.connections
     simulator.stray = b"AT+RFPOWER=78\r\nOK\r\n"
     await coordinator.async_refresh()
@@ -298,3 +302,16 @@ async def test_frozen_module_raises_a_repair(
     await coordinator.async_refresh()
     assert coordinator.last_update_success
     assert ir.async_get(hass).async_get_issue("vents_a21", issue_id) is None
+
+
+async def test_connection_per_poll_by_default(
+    hass: HomeAssistant, simulator: A21Simulator, entry: MockConfigEntry
+) -> None:
+    """Without the option, each poll opens and closes its own connection."""
+    coordinator = entry.runtime_data
+    assert not coordinator.api.keep_connection
+    before = simulator.connections
+    await coordinator.async_refresh()
+    await coordinator.async_refresh()
+    assert simulator.connections == before + 2
+    assert not coordinator.api._client.connected

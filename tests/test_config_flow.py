@@ -138,7 +138,11 @@ async def test_options(
     )
     await hass.async_block_till_done()
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.options == {CONF_SCAN_INTERVAL: 30, "manual_bypass": False}
+    assert entry.options == {
+        CONF_SCAN_INTERVAL: 30,
+        "manual_bypass": False,
+        "keep_connection": False,
+    }
     assert entry.runtime_data.update_interval.total_seconds() == 30
 
 

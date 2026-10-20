@@ -19,6 +19,7 @@ CONF_DEVICE_PASSWORD: Final = "device_password"
 # Option: the bypass is driven from Home Assistant, so the warning the unit
 # raises while its bypass is in manual mode is expected and is not reported.
 CONF_MANUAL_BYPASS: Final = "manual_bypass"
+CONF_KEEP_CONNECTION: Final = "keep_connection"
 
 DEFAULT_PORT: Final = 502
 DEFAULT_UNIT_ID: Final = 1

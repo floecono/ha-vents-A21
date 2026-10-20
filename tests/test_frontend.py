@@ -15,7 +15,7 @@ from custom_components.vents_a21.const import MODELS, SHOP_URL
 from custom_components.vents_a21.diagnostics import async_get_config_entry_diagnostics
 
 
-CARD = "/vents_a21/vents-a21-card.js?v=0.2.12"
+CARD = "/vents_a21/vents-a21-card.js?v=0.2.13"
 
 
 async def test_card_is_served(

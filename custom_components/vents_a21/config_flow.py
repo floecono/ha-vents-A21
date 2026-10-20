@@ -29,6 +29,7 @@ from .api import A21Api
 from .const import (
     CONF_ADVANCED,
     CONF_DEVICE_PASSWORD,
+    CONF_KEEP_CONNECTION,
     CONF_MANUAL_BYPASS,
     CONF_MODEL,
     CONF_UNIT_ID,
@@ -199,6 +200,7 @@ class A21OptionsFlow(OptionsFlow):
                 data={
                     CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL]),
                     CONF_MANUAL_BYPASS: bool(user_input.get(CONF_MANUAL_BYPASS)),
+                    CONF_KEEP_CONNECTION: bool(user_input.get(CONF_KEEP_CONNECTION)),
                 }
             )
         return self.async_show_form(
@@ -221,6 +223,10 @@ class A21OptionsFlow(OptionsFlow):
                     vol.Required(
                         CONF_MANUAL_BYPASS,
                         default=bool(self.config_entry.options.get(CONF_MANUAL_BYPASS)),
+                    ): BooleanSelector(),
+                    vol.Required(
+                        CONF_KEEP_CONNECTION,
+                        default=bool(self.config_entry.options.get(CONF_KEEP_CONNECTION)),
                     ): BooleanSelector(),
                 }
             ),
