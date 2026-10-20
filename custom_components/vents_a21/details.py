@@ -19,6 +19,7 @@ from .alarms import ALARM, WARNING, language_of
 from .api import (
     EFFICIENCY_COOLING,
     EFFICIENCY_HEATING,
+    EFFICIENCY_DEFROSTING,
     EFFICIENCY_PREHEATING,
     EFFICIENCY_SMALL_DIFFERENCE,
     MIN_EFFICIENCY_DELTA,
@@ -256,6 +257,29 @@ _T: dict[str, dict[str, str]] = {
         "x_efficiency_preheating": (
             "L'échangeur récupère la chaleur, mais le préchauffage fausse la mesure."
         ),
+        "x_efficiency_defrosting": (
+            "Dégivrage en cours : le ventilateur de soufflage est à l'arrêt, la"
+            " mesure n'a pas de sens tant qu'il ne tourne pas."
+        ),
+        "x_efficiency_exhaust": "Rendement côté extraction",
+        "x_efficiency_exhaust_hint": (
+            "Part de sa chaleur que l'air extrait a cédée. Égal au rendement côté"
+            " soufflage quand les débits sont équilibrés."
+        ),
+        "x_flow_ratio": "Rapport de débits extraction / soufflage",
+        "x_flow_ratio_hint": (
+            "Déduit des quatre sondes de température : la chaleur cédée par l'air"
+            " extrait est celle reçue par l'air neuf. 1,00 = débits égaux."
+        ),
+        "x_flow_ratio_condensing": (
+            "Indicatif : l'air rejeté est sous le point de rosée de l'air extrait"
+            " ({dew_point}), la condensation fausse le bilan."
+        ),
+        "x_flow_ratio_guess": (
+            "Indicatif : sans sonde d'humidité, l'air rejeté est assez froid pour"
+            " condenser, ce qui fausse le bilan."
+        ),
+        "x_flow_imbalance": "Débits déséquilibrés au-delà de la tolérance ({tolerance} %)",
         "x_frost": "Protection antigel",
         "x_frost_0": "Désactivée",
         "x_frost_1": "Par préchauffage",
@@ -424,6 +448,29 @@ _T: dict[str, dict[str, str]] = {
         "x_efficiency_preheating": (
             "The exchanger is recovering heat, but the preheater distorts the reading."
         ),
+        "x_efficiency_defrosting": (
+            "Defrosting: the supply fan is stopped, the figure means nothing"
+            " until it runs again."
+        ),
+        "x_efficiency_exhaust": "Exhaust-side efficiency",
+        "x_efficiency_exhaust_hint": (
+            "Share of its heat the extract air gave up. Equal to the supply-side"
+            " figure when the flows are balanced."
+        ),
+        "x_flow_ratio": "Extract / supply flow ratio",
+        "x_flow_ratio_hint": (
+            "From the four temperature probes: the heat the extract air gives up"
+            " is the heat the supply air takes. 1.00 = equal flows."
+        ),
+        "x_flow_ratio_condensing": (
+            "Indicative: the exhaust air is under the dew point of the extract air"
+            " ({dew_point}), condensation skews the balance."
+        ),
+        "x_flow_ratio_guess": (
+            "Indicative: without a humidity probe, the exhaust air is cold enough"
+            " to condense, which skews the balance."
+        ),
+        "x_flow_imbalance": "Flows unbalanced beyond the tolerance ({tolerance} %)",
         "x_frost": "Frost protection",
         "x_frost_0": "Disabled",
         "x_frost_1": "By preheating",
@@ -472,9 +519,17 @@ Row = dict[str, Any]
 class _Builder:
     """Collect the sections of one snapshot, in one language."""
 
-    def __init__(self, data: A21Data, language: str) -> None:
+    def __init__(
+        self,
+        data: A21Data,
+        language: str,
+        flow_imbalance: bool = False,
+        flow_tolerance: int = 0,
+    ) -> None:
         self.data = data
         self.language = language_of(language)
+        self.flow_imbalance = flow_imbalance
+        self.flow_tolerance = flow_tolerance
         self.text = _T[self.language]
         self.sections: list[dict[str, Any]] = []
 
@@ -537,6 +592,7 @@ _RECOVERING_UNMEASURED = frozenset(
         EFFICIENCY_HEATING,
         EFFICIENCY_COOLING,
         EFFICIENCY_PREHEATING,
+        EFFICIENCY_DEFROSTING,
     }
 )
 
@@ -834,6 +890,39 @@ def _exchanger(b: _Builder) -> None:
     status = data.efficiency_status
     if efficiency is not None:
         rows.append(b.row("x_efficiency", b.value(efficiency, "%")))
+        exhaust_side = data.efficiency_exhaust_side
+        if exhaust_side is not None:
+            rows.append(
+                b.row(
+                    "x_efficiency_exhaust",
+                    b.value(exhaust_side, "%"),
+                    hint=text["x_efficiency_exhaust_hint"],
+                )
+            )
+        ratio = data.flow_ratio
+        if ratio is not None:
+            hint = text["x_flow_ratio_hint"]
+            level = None
+            if data.condensation_likely:
+                dew_point = data.dew_point
+                hint = (
+                    text["x_flow_ratio_condensing"].format(
+                        dew_point=b.value(dew_point, "°C", 1)
+                    )
+                    if dew_point is not None
+                    else text["x_flow_ratio_guess"]
+                )
+            elif b.flow_imbalance:
+                hint = text["x_flow_imbalance"].format(tolerance=b.flow_tolerance)
+                level = WARNING
+            rows.append(
+                b.row(
+                    "x_flow_ratio",
+                    f"{ratio:.2f}".replace(".", "," if b.language == "fr" else "."),
+                    hint=hint,
+                    level=level,
+                )
+            )
     elif status in _RECOVERING_UNMEASURED:
         # The exchanger works, only the figure is missing: say so, and why.
         gap = data.temperature_difference or 0.0
@@ -962,12 +1051,19 @@ def _service(b: _Builder, model: Model) -> None:
 
 
 def build_details(
-    data: A21Data | None, *, name: str, model: Model, language: str, available: bool
+    data: A21Data | None,
+    *,
+    name: str,
+    model: Model,
+    language: str,
+    available: bool,
+    flow_imbalance: bool = False,
+    flow_tolerance: int = 0,
 ) -> dict[str, Any]:
     """Return the full, readable snapshot of one unit."""
     if data is None or not available:
         return {"name": name, "available": False, "sections": []}
-    builder = _Builder(data, language)
+    builder = _Builder(data, language, flow_imbalance, flow_tolerance)
     _alarms(builder)
     _state(builder)
     _fans(builder)

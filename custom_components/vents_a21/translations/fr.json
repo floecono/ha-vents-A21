@@ -302,6 +302,9 @@
       },
       "link_hiccups": {
         "name": "Accrocs de liaison (24 h)"
+      },
+      "flow_ratio": {
+        "name": "Rapport de débits extraction/soufflage"
       }
     },
     "binary_sensor": {
@@ -682,6 +685,9 @@
       },
       "filters_reminder_days": {
         "name": "Rappel des filtres avant échéance"
+      },
+      "flow_imbalance_tolerance": {
+        "name": "Déséquilibre de débits toléré"
       }
     }
   },

@@ -70,6 +70,7 @@ from .const import (
 from .coordinator import A21ConfigEntry, A21Coordinator
 from .entity import A21Entity
 from .filters import CLASSES, MAX_REMINDER_DAYS
+from .settings import MAX_FLOW_TOLERANCE
 
 # Holding registers only used here.
 HR_BLOWING_SPEED = 18
@@ -571,8 +572,47 @@ async def async_setup_entry(
             ),
             *(A21FilterStockNumber(coordinator, cls) for cls in CLASSES),
             A21FilterReminderNumber(coordinator),
+            A21FlowToleranceNumber(coordinator),
         ]
     )
+
+
+class A21FlowToleranceNumber(A21Entity, NumberEntity):
+    """Flow imbalance tolerated before the dashboard warns, in percent.
+
+    The apparent extract/supply flow ratio comes from the four temperature
+    probes. Some houses are balanced on purpose with a little more supply
+    or extract; this is where the owner says what is normal. 0 switches
+    the warning off; the figures stay visible.
+    """
+
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_native_min_value = 0
+    _attr_native_max_value = MAX_FLOW_TOLERANCE
+    _attr_native_step = 1
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_mode = NumberMode.BOX
+    _attr_icon = "mdi:scale-unbalanced"
+
+    def __init__(self, coordinator: A21Coordinator) -> None:
+        """Initialise the tolerance setting."""
+        super().__init__(coordinator, "flow_imbalance_tolerance")
+
+    async def async_added_to_hass(self) -> None:
+        """Follow the setting."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self.coordinator.settings.async_add_listener(self.async_write_ha_state)
+        )
+
+    @property
+    def native_value(self) -> float:
+        """Return the tolerated imbalance in percent."""
+        return self.coordinator.settings.flow_tolerance
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Change the tolerance."""
+        self.coordinator.settings.set_flow_tolerance(int(value))
 
 
 class A21FilterReminderNumber(A21Entity, NumberEntity):

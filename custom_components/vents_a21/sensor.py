@@ -25,6 +25,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
+from homeassistant.util import dt as dt_util
 
 from .alarms import ALARM, WARNING
 from .api import MIN_EFFICIENCY_DELTA, A21Data
@@ -253,6 +254,12 @@ def _efficiency_attributes(data: A21Data, language: str) -> dict[str, Any]:
         "status": data.efficiency_status,
         "temperature_difference": data.temperature_difference,
         "minimum_difference": MIN_EFFICIENCY_DELTA,
+        # The other face of the same exchange, and what the four probes say
+        # of the real flows (see A21Data.flow_ratio).
+        "exhaust_side": data.efficiency_exhaust_side,
+        "flow_ratio": data.flow_ratio,
+        "condensation_likely": data.condensation_likely,
+        "dew_point": data.dew_point,
     }
 
 
@@ -470,8 +477,52 @@ async def async_setup_entry(
                 if description.exists_fn(coordinator.data)
             ),
             A21LinkHiccupsSensor(coordinator),
+            A21FlowRatioSensor(coordinator),
         ]
     )
+
+
+class A21FlowRatioSensor(A21Entity, SensorEntity):
+    """Apparent extract/supply flow ratio from the four temperature probes.
+
+    1.00 is balanced; 1.50 means the extract flow is half as big again as
+    the supply flow, whatever the fan settings. Off by default: it is for
+    commissioning and for watching filters clog over months. Unknown while
+    the efficiency is not measurable; the attributes keep the last clean
+    reading (no condensation) with its time.
+    """
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:scale-balance"
+    _attr_suggested_display_precision = 2
+
+    def __init__(self, coordinator: A21Coordinator) -> None:
+        """Initialise the ratio."""
+        super().__init__(coordinator, "flow_ratio")
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the live ratio, None when it cannot be measured."""
+        return self.coordinator.data.flow_ratio
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Say whether the figure is clean and what the last clean one was."""
+        data = self.coordinator.data
+        return {
+            "condensation_likely": data.condensation_likely,
+            "efficiency_status": data.efficiency_status,
+            "imbalance_warning": self.coordinator.flow_imbalance,
+            "tolerance": self.coordinator.settings.flow_tolerance,
+            "last_clean_ratio": self.coordinator.last_flow_ratio,
+            "last_clean_ratio_at": (
+                None
+                if self.coordinator.last_flow_ratio_at is None
+                else dt_util.utc_from_timestamp(self.coordinator.last_flow_ratio_at)
+            ),
+        }
 
 
 class A21LinkHiccupsSensor(A21Entity, SensorEntity):
@@ -536,6 +587,12 @@ class A21Sensor(A21Entity, SensorEntity):
         """Return the extra attributes, if any."""
         if self.entity_description.attributes_fn is None:
             return None
-        return self.entity_description.attributes_fn(
+        attributes = self.entity_description.attributes_fn(
             self.coordinator.data, self.hass.config.language
         )
+        if self.entity_description.key == "heat_recovery_efficiency":
+            # The warning is the coordinator's (confirmed over several
+            # readings against the owner's tolerance); the card reads it here.
+            attributes["flow_imbalance"] = self.coordinator.flow_imbalance
+            attributes["flow_tolerance"] = self.coordinator.settings.flow_tolerance
+        return attributes

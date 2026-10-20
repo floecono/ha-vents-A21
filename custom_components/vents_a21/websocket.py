@@ -70,6 +70,8 @@ def ws_subscribe_details(
                     model=coordinator.model,
                     language=language,
                     available=coordinator.last_update_success,
+                    flow_imbalance=coordinator.flow_imbalance,
+                    flow_tolerance=coordinator.settings.flow_tolerance,
                 ),
             )
         )

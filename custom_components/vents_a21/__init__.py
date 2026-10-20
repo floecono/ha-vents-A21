@@ -92,6 +92,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: A21ConfigEntry) -> bool:
     """Set up one ventilation unit."""
     coordinator = A21Coordinator(hass, entry)
     await coordinator.filters.async_load()
+    await coordinator.settings.async_load()
     await coordinator.async_config_entry_first_refresh()
     # The identifier of the module is asked over UDP in the background, a
     # few seconds after a poll (never right behind one: the bridge in the

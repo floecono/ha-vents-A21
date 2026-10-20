@@ -38,6 +38,7 @@ from .const import (
     Model,
 )
 from .filters import FilterStock
+from .settings import UnitSettings
 from .identity import DEFAULT_DEVICE_PASSWORD, async_probe, async_read_identifier
 from .modbus import ModbusError, ModbusExceptionResponse
 
@@ -61,6 +62,10 @@ ISSUE_MODBUS_STUCK = "modbus_stuck"
 STUCK_INTERVAL = timedelta(minutes=10)
 # Window of the "link hiccups" counter.
 HICCUP_WINDOW = 24 * 3600
+# Clean readings in a row, out of tolerance, before the flow-imbalance
+# warning is shown (5 min at the default 30 s): one odd reading, a defrost
+# cycle or a door opened do not raise it.
+IMBALANCE_CONFIRM = 10
 # A missing identifier is asked again this often (seconds).
 IDENTITY_RETRY = 600
 # Seconds left between a poll and the next question over UDP.
@@ -118,6 +123,14 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         self._last_stats: dict | None = None
         # Spare filters at home; loaded by async_setup_entry.
         self.filters = FilterStock(hass, entry.entry_id, self.model)
+        self.settings = UnitSettings(hass, entry.entry_id)
+        # Flow balance from the four probes: how many clean readings in a
+        # row were out of tolerance, whether the warning is up, and the last
+        # ratio measured in clean conditions (no condensation).
+        self._imbalanced_polls = 0
+        self.flow_imbalance = False
+        self.last_flow_ratio: float | None = None
+        self.last_flow_ratio_at: float | None = None
         self._filter_days: int | None = None
         self._filter_interval: int | None = None
         # Identifier of the Wi-Fi module, the one the app shows, asked over
@@ -244,7 +257,31 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
             _LOGGER.warning("%s answers again", self.config_entry.data[CONF_HOST])
             self._clear_stuck()
         self._track_filter_change(data)
+        self._track_flow_balance(data)
         return data
+
+    @callback
+    def _track_flow_balance(self, data: A21Data) -> None:
+        """Keep the flow-imbalance warning from the apparent flow ratio.
+
+        Only clean readings count: a measurable efficiency and no likely
+        condensation (latent heat would skew the ratio). The warning needs
+        IMBALANCE_CONFIRM such readings in a row out of tolerance, and goes
+        down at the first clean reading back within tolerance. Tolerance 0
+        switches it off.
+        """
+        ratio = data.flow_ratio
+        if ratio is None or data.condensation_likely:
+            return
+        self.last_flow_ratio, self.last_flow_ratio_at = ratio, time.time()
+        tolerance = self.settings.flow_tolerance
+        if tolerance == 0 or abs(ratio - 1) * 100 <= tolerance:
+            self._imbalanced_polls = 0
+            self.flow_imbalance = False
+            return
+        self._imbalanced_polls += 1
+        if self._imbalanced_polls >= IMBALANCE_CONFIRM:
+            self.flow_imbalance = True
 
     @callback
     def _count_hiccups(self) -> None:

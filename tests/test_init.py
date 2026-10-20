@@ -14,6 +14,7 @@ from custom_components.vents_a21.const import DOMAIN
 from custom_components.vents_a21.coordinator import TOLERATED_FAILURES
 
 from .conftest import make_entry, setup_entry
+from .test_controls import call
 from .simulator import A21Simulator
 
 CLIMATE = "climate.zephyr_240_s_connect"
@@ -374,3 +375,80 @@ async def test_connection_per_poll_option(
     await coordinator.async_refresh()
     assert simulator.connections == before + 2
     assert not coordinator.api._client.connected
+
+
+async def test_flow_balance_from_the_four_probes(
+    hass: HomeAssistant, simulator: A21Simulator, entry: MockConfigEntry
+) -> None:
+    """Exhaust-side ratio, apparent flow ratio, condensation and the warning."""
+    from custom_components.vents_a21.coordinator import IMBALANCE_CONFIRM
+
+    coordinator = entry.runtime_data
+    efficiency_id = "sensor.zephyr_240_s_connect_heat_recovery_efficiency"
+    # Balanced: outdoor 0, supply 16, extract 20, exhaust 4 → 80 % both sides,
+    # ratio 1.00. Indoor air 20 °C / 30 %: dew point 1.9 °C, exhaust above it.
+    simulator.set_temperature(1, 0.0)
+    simulator.set_temperature(2, 16.0)
+    simulator.set_temperature(3, 20.0)
+    simulator.set_temperature(4, 4.0)
+    simulator.set_input(10, 30)
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    attrs = hass.states.get(efficiency_id).attributes
+    assert hass.states.get(efficiency_id).state == "80"
+    assert attrs["exhaust_side"] == 80
+    assert attrs["flow_ratio"] == pytest.approx(1.0)
+    assert attrs["condensation_likely"] is False
+    assert attrs["dew_point"] == pytest.approx(1.9, abs=0.2)
+    assert attrs["flow_imbalance"] is False
+
+    # Extract 1.5 x supply: supply reaches 18, exhaust only drops to 8.
+    simulator.set_temperature(2, 18.0)
+    simulator.set_temperature(4, 8.0)
+    for _ in range(IMBALANCE_CONFIRM - 1):
+        await coordinator.async_refresh()
+    attrs = hass.states.get(efficiency_id).attributes
+    assert hass.states.get(efficiency_id).state == "90"
+    assert attrs["exhaust_side"] == 60
+    assert attrs["flow_ratio"] == pytest.approx(1.5)
+    assert attrs["flow_imbalance"] is False  # not yet confirmed
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(efficiency_id).attributes["flow_imbalance"] is True
+    assert coordinator.last_flow_ratio == pytest.approx(1.5)
+
+    # Tolerance 0 switches the warning off; a wider tolerance accepts it.
+    await call(
+        hass,
+        "number",
+        "set_value",
+        entity_id=f"number.{PREFIX}_tolerated_flow_imbalance",
+        value=0,
+    )
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(efficiency_id).attributes["flow_imbalance"] is False
+
+    # Humid indoor air (20 °C / 70 %: dew point 14.4 °C): the exhaust at 8 °C
+    # condenses, the ratio is only indicative and the warning stays down.
+    await call(
+        hass,
+        "number",
+        "set_value",
+        entity_id=f"number.{PREFIX}_tolerated_flow_imbalance",
+        value=15,
+    )
+    simulator.set_input(10, 70)
+    for _ in range(IMBALANCE_CONFIRM + 1):
+        await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    attrs = hass.states.get(efficiency_id).attributes
+    assert attrs["condensation_likely"] is True
+    assert attrs["flow_imbalance"] is False
+
+    # Defrost: supply fan stopped while the extract fan runs → no figure.
+    simulator.set_input(23, 0)
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(efficiency_id).state == "unknown"
+    assert hass.states.get(efficiency_id).attributes["status"] == "defrosting"

@@ -90,6 +90,17 @@ const TEXT = {
     recoveryHeating: "active, rendement non mesurable (chauffage)",
     recoveryCooling: "active, rendement non mesurable (refroidissement)",
     recoveryPreheating: "active, rendement non mesurable (préchauffage antigel)",
+    whyDefrosting: "dégivrage",
+    recoveryDefrosting: "dégivrage en cours, soufflage à l'arrêt",
+    flowImbalance: (ratio) =>
+      ratio >= 1
+        ? `Débits déséquilibrés : extraction ≈ ${ratio.toFixed(2).replace(".", ",")} × soufflage`
+        : `Débits déséquilibrés : soufflage ≈ ${(1 / ratio).toFixed(2).replace(".", ",")} × extraction`,
+    flowImbalanceHint: "D'après les quatre sondes de température. Tolérance réglable dans la page de l'appareil.",
+    exhaustSide: "côté extraction",
+    flowRatio: "rapport de débits extraction/soufflage",
+    flowRatioCondensing: "indicatif, condensation probable",
+    flowTolerance: "Déséquilibre de débits toléré avant alerte, en % (0 : pas d'alerte)",
     bypassControl: "Commande du bypass",
     frostByBypass:
       "Bypass en manuel : sans préchauffage, c'est le bypass qui protège l'échangeur du gel. En hiver, repassez en automatique.",
@@ -180,6 +191,17 @@ const TEXT = {
     recoveryHeating: "active, efficiency not measurable (heating)",
     recoveryCooling: "active, efficiency not measurable (cooling)",
     recoveryPreheating: "active, efficiency not measurable (preheating)",
+    whyDefrosting: "defrosting",
+    recoveryDefrosting: "defrosting, supply fan stopped",
+    flowImbalance: (ratio) =>
+      ratio >= 1
+        ? `Unbalanced flows: extract ≈ ${ratio.toFixed(2)} × supply`
+        : `Unbalanced flows: supply ≈ ${(1 / ratio).toFixed(2)} × extract`,
+    flowImbalanceHint: "From the four temperature probes. Tolerance adjustable on the device page.",
+    exhaustSide: "exhaust side",
+    flowRatio: "extract/supply flow ratio",
+    flowRatioCondensing: "indicative, condensation likely",
+    flowTolerance: "Flow imbalance tolerated before the warning, in % (0: no warning)",
     bypassControl: "Bypass control",
     frostByBypass:
       "Bypass in manual mode: without a preheater, the bypass is what protects the exchanger from frost. Switch back to automatic in winter.",
@@ -456,6 +478,7 @@ const TEMPLATE = `
       <div class="notice alarm" hidden><span></span></div>
       <div class="notice warning" hidden><span></span></div>
       <div class="notice frost" hidden><span></span></div>
+      <div class="notice flow" hidden><span></span></div>
       <div class="notice filter" hidden><span></span><button type="button" class="order" hidden></button><button type="button" class="received" hidden></button></div>
       <dialog class="cart">
         <form method="dialog">
@@ -686,6 +709,7 @@ class VentsA21Card extends HTMLElement {
       alarm: root.querySelector(".notice.alarm"),
       warning: root.querySelector(".notice.warning"),
       frost: root.querySelector(".notice.frost"),
+      flow: root.querySelector(".notice.flow"),
       streams: root.querySelector(".streams"),
       filter: root.querySelector(".notice.filter"),
       unit: root.querySelector(".unit"),
@@ -801,6 +825,8 @@ class VentsA21Card extends HTMLElement {
             a.frost_protection,
             a.command,
             a.fan_targets,
+            a.flow_imbalance,
+            a.flow_ratio,
             a.ordered,
             a.per_change,
             a.tracking,
@@ -891,6 +917,20 @@ class VentsA21Card extends HTMLElement {
       (outdoorNow === null || outdoorNow < FROST_WARNING_BELOW);
     this._el.frost.hidden = !frostRisk;
     if (frostRisk) this._el.frost.querySelector("span").textContent = text.frostByBypass;
+
+    // Flow imbalance, confirmed by the integration over several clean
+    // readings against the tolerance set for this unit.
+    const effAttrs = state("efficiency")?.attributes || {};
+    const flowRatio = Number(effAttrs.flow_ratio);
+    const imbalance = on && effAttrs.flow_imbalance === true && Number.isFinite(flowRatio) && flowRatio > 0;
+    this._el.flow.hidden = !imbalance;
+    if (imbalance) {
+      const span = this._el.flow.querySelector("span");
+      span.replaceChildren(text.flowImbalance(flowRatio));
+      const small = document.createElement("small");
+      small.textContent = text.flowImbalanceHint;
+      span.append(small);
+    }
 
     const days = number(state("filterDays"));
     // Due when the unit says so, or when its countdown has run out.
@@ -1034,6 +1074,7 @@ class VentsA21Card extends HTMLElement {
       heating: [text.whyHeating, text.recoveryHeating],
       cooling: [text.whyCooling, text.recoveryCooling],
       preheating: [text.whyPreheating, text.recoveryPreheating],
+      defrosting: [text.whyDefrosting, text.recoveryDefrosting],
     }[why];
     this._el.eff.classList.toggle("word", diverted || Boolean(unmeasured));
     if (on && efficiency !== null) {
@@ -1739,14 +1780,13 @@ class VentsA21CardEditor extends HTMLElement {
         .unit { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--divider-color); }
         .unit h4 { margin: 0 0 4px; font-size: 14px; font-weight: 500; }
         .unit p { margin: 0 0 12px; font-size: 12px; color: var(--secondary-text-color); }
-        .unit label { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 14px; }
+        .unit label { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 14px; margin-top: 10px; }
         .unit input { width: 6em; padding: 6px 8px; font: inherit; color: var(--primary-text-color);
           background: var(--card-background-color); border: 1px solid var(--divider-color); border-radius: 4px; }
       </style>
       <ha-form></ha-form>
       <div class="unit" hidden>
         <h4></h4><p></p>
-        <label><span></span><input type="number" min="0" max="${FILTER_SOON_MAX}" step="1"></label>
       </div>`;
     this._form = this.shadowRoot.querySelector("ha-form");
     this._form.addEventListener("value-changed", (ev) => {
@@ -1757,12 +1797,25 @@ class VentsA21CardEditor extends HTMLElement {
       );
     });
     this._unit = this.shadowRoot.querySelector(".unit");
-    this._input = this._unit.querySelector("input");
-    this._input.addEventListener("change", () => this._setReminder());
+    // One row per setting of the unit: the number entity it reads and
+    // writes, and its label.
+    this._rows = UNIT_SETTINGS.map((setting) => {
+      const label = document.createElement("label");
+      const span = document.createElement("span");
+      const input = document.createElement("input");
+      input.type = "number";
+      input.min = "0";
+      input.max = String(setting.max);
+      input.step = "1";
+      input.addEventListener("change", () => this._setValue(setting, input));
+      label.append(span, input);
+      this._unit.append(label);
+      return { setting, label, span, input };
+    });
   }
 
-  /** The reminder entity of the configured unit, if the integration has it. */
-  _reminderEntity() {
+  /** The number entity of the configured unit with this translation key. */
+  _entity(key) {
     const hass = this._hass;
     const deviceId = this._config.device_id || devicesOf(hass)[0];
     for (const [entityId, entity] of Object.entries(hass.entities || {})) {
@@ -1770,20 +1823,20 @@ class VentsA21CardEditor extends HTMLElement {
         entity.platform === DOMAIN &&
         entity.device_id === deviceId &&
         entityId.startsWith("number.") &&
-        entity.translation_key === "filters_reminder_days"
+        entity.translation_key === key
       )
         return entityId;
     }
     return null;
   }
 
-  _setReminder() {
-    const entityId = this._reminderEntity();
-    const value = Number(this._input.value);
+  _setValue(setting, input) {
+    const entityId = this._entity(setting.key);
+    const value = Number(input.value);
     if (!entityId || !Number.isFinite(value)) return;
-    const days = Math.min(Math.max(Math.round(value), 0), FILTER_SOON_MAX);
-    this._input.value = String(days);
-    this._hass.callService("number", "set_value", { entity_id: entityId, value: days });
+    const clamped = Math.min(Math.max(Math.round(value), 0), setting.max);
+    input.value = String(clamped);
+    this._hass.callService("number", "set_value", { entity_id: entityId, value: clamped });
   }
 
   _render() {
@@ -1796,19 +1849,29 @@ class VentsA21CardEditor extends HTMLElement {
     this._form.computeLabel = form.computeLabel;
 
     const text = TEXT[(this._hass.language || "en").startsWith("fr") ? "fr" : "en"];
-    const entityId = this._reminderEntity();
-    const stateObj = entityId ? this._hass.states[entityId] : undefined;
-    this._unit.hidden = !stateObj;
-    if (!stateObj) return;
+    let shown = 0;
+    for (const row of this._rows) {
+      const entityId = this._entity(row.setting.key);
+      const stateObj = entityId ? this._hass.states[entityId] : undefined;
+      row.label.hidden = !stateObj;
+      if (!stateObj) continue;
+      shown += 1;
+      row.span.textContent = text[row.setting.label];
+      // Do not overwrite what the owner is typing.
+      if (this.shadowRoot.activeElement !== row.input) row.input.value = stateObj.state;
+    }
+    this._unit.hidden = shown === 0;
     this._unit.querySelector("h4").textContent = text.unitSettings;
     this._unit.querySelector("p").textContent = text.unitSettingsHint;
-    this._unit.querySelector("span").textContent = text.reminderDays;
-    // Do not overwrite what the owner is typing.
-    if (this.shadowRoot.activeElement !== this._input) {
-      this._input.value = stateObj.state;
-    }
   }
 }
+
+// Settings of the unit offered in the card editor: number entities of the
+// integration, read and written in place (nothing is stored in the card).
+const UNIT_SETTINGS = [
+  { key: "filters_reminder_days", label: "reminderDays", max: FILTER_SOON_MAX },
+  { key: "flow_imbalance_tolerance", label: "flowTolerance", max: 50 },
+];
 
 // Home Assistant swaps window.customElements for a scoped registry while it
 // starts. This file is loaded before that happens (it is an "extra module"
