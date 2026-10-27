@@ -1052,6 +1052,18 @@ class VentsA21Card extends HTMLElement {
       }
       root.querySelector(`[data-xstop="${name}-in"]`).setAttribute("stop-color", colours[inlet]);
       root.querySelector(`[data-xstop="${name}-out"]`).setAttribute("stop-color", exchanged);
+      // Colour of the trunk out: the change of colour across the unit
+      // follows the share of air that crossed the exchanger. With the
+      // damper fully open the stream keeps the colour it came in with, even
+      // when the outlet probe reads a little differently (fan heat, duct
+      // gains, probe offsets); the figure shown is still the measured one.
+      let shownOutlet = colours[outlet];
+      if (aroundShare > 0 && temps[inlet] !== null && temps[outlet] !== null) {
+        const value = temps[inlet] + (temps[outlet] - temps[inlet]) * (1 - aroundShare);
+        shownOutlet = mix(span < 0.5 ? 0.5 : (value - low) / span);
+      }
+      root.querySelector(`[data-stop="${outlet}"]`).setAttribute("stop-color", shownOutlet);
+      root.querySelector(`[data-arrow="${outlet}"]`)?.setAttribute("fill", shownOutlet);
     }
     this._fanRates = {};
     for (const name of Object.keys(STREAMS)) {
