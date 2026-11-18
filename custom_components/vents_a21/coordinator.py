@@ -113,6 +113,11 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         self.failed_polls = 0
         self._frozen_reported = False
         self._stuck_issue: str | None = None
+        # A repair left by a previous run (the unit froze, then Home Assistant
+        # restarted before it answered again) would otherwise linger in the
+        # issue registry with nobody to clear it.
+        for key in (ISSUE_FROZEN, ISSUE_MODBUS_STUCK):
+            ir.async_delete_issue(hass, DOMAIN, self._issue_id(key))
         self._normal_interval = self.update_interval
         # What the module last said over the app protocol while Modbus was
         # silent (diagnostics).
