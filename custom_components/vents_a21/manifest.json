@@ -1,6 +1,7 @@
 {
   "domain": "vents_a21",
   "name": "ECONOPRIME Connect (VENTS A21)",
+  "categories": ["climate.fans_ventilation"],
   "codeowners": ["@floecono"],
   "config_flow": true,
   "dependencies": ["frontend", "http", "lovelace", "websocket_api"],
@@ -9,5 +10,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/floecono/ha-vents-A21/issues",
   "requirements": [],
-  "version": "0.2.16"
+  "version": "0.2.17"
 }
