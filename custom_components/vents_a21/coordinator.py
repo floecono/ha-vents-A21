@@ -17,8 +17,10 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .api import A21Api, A21Data, CoilWrite, RegisterWrite, Write
+from .clock import SYNC_MIN_INTERVAL, clock_drift, clock_write
 from .const import (
     CONF_DEVICE_PASSWORD,
     CONF_KEEP_CONNECTION,
@@ -119,6 +121,10 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         for key in (ISSUE_FROZEN, ISSUE_MODBUS_STUCK):
             ir.async_delete_issue(hass, DOMAIN, self._issue_id(key))
         self._normal_interval = self.update_interval
+        # Seconds the clock of the unit is ahead of Home Assistant's, and
+        # when it was last set from here (monotonic).
+        self.clock_drift: float | None = None
+        self._clock_set_at: float | None = None
         # What the module last said over the app protocol while Modbus was
         # silent (diagnostics).
         self.last_probe: dict[str, str] | None = None
@@ -263,6 +269,39 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
             self._clear_stuck()
         self._track_filter_change(data)
         self._track_flow_balance(data)
+        return await self._async_keep_clock(data)
+
+    async def _async_keep_clock(self, data: A21Data) -> A21Data:
+        """Set the clock of the unit when it has drifted, if asked to.
+
+        Only with the setting on, beyond the tolerance, and once an hour at
+        most. A refused or lost write is not an error of the poll: the
+        values just read stand, and the next attempt waits its hour.
+        """
+        self.clock_drift = clock_drift(data, dt_util.now())
+        if (
+            not self.settings.clock_sync
+            or self.clock_drift is None
+            or abs(self.clock_drift) <= self.settings.clock_tolerance * 60
+        ):
+            return data
+        now = time.monotonic()
+        if (
+            self._clock_set_at is not None
+            and now - self._clock_set_at < SYNC_MIN_INTERVAL
+        ):
+            return data
+        self._clock_set_at = now
+        try:
+            data = await self.api.async_write([clock_write(dt_util.now())])
+        except ModbusError as err:
+            _LOGGER.warning("Could not set the clock of the unit: %s", err)
+            return data
+        _LOGGER.info(
+            "Clock of the unit set: it was %+.0f s from Home Assistant's time",
+            self.clock_drift,
+        )
+        self.clock_drift = clock_drift(data, dt_util.now())
         return data
 
     @callback
@@ -331,7 +370,9 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
         self.last_probe, self.last_probe_at = probe, time.time()
         key = ISSUE_MODBUS_STUCK if probe else ISSUE_FROZEN
         if self._stuck_issue == key:
-            _LOGGER.info("%s still unreachable over Modbus; app protocol: %s", host, probe)
+            _LOGGER.info(
+                "%s still unreachable over Modbus; app protocol: %s", host, probe
+            )
             return
         if self._stuck_issue is not None:
             ir.async_delete_issue(self.hass, DOMAIN, self._issue_id(self._stuck_issue))
@@ -397,6 +438,7 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
                 translation_placeholders={"error": str(err)},
             ) from err
         self._track_filter_change(data)
+        self.clock_drift = clock_drift(data, dt_util.now())
         self.async_set_updated_data(data)
 
     @callback
@@ -431,4 +473,3 @@ class A21Coordinator(DataUpdateCoordinator[A21Data]):
     async def async_write_register(self, address: int, value: int) -> None:
         """Write one holding register."""
         await self.async_write(RegisterWrite(address, value))
-

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -33,6 +34,7 @@ from .api import MIN_EFFICIENCY_DELTA, A21Data
 # Units spelled out: the CONCENTRATION_* constants were deprecated in 2026.
 MICROGRAMS_PER_CUBIC_METER = "μg/m³"
 PARTS_PER_MILLION = "ppm"
+from .clock import HR_RTC_MONTH_YEAR, read_clock
 from .const import (
     CL_10V_SENSOR_CTRL,
     CL_EXT_CO2_CTRL,
@@ -478,6 +480,11 @@ async def async_setup_entry(
             ),
             A21LinkHiccupsSensor(coordinator),
             A21FlowRatioSensor(coordinator),
+            *(
+                [A21ClockSensor(coordinator), A21ClockDriftSensor(coordinator)]
+                if coordinator.data.hr(HR_RTC_MONTH_YEAR) is not None
+                else []
+            ),
         ]
     )
 
@@ -523,6 +530,55 @@ class A21FlowRatioSensor(A21Entity, SensorEntity):
                 else dt_util.utc_from_timestamp(self.coordinator.last_flow_ratio_at)
             ),
         }
+
+
+class A21ClockSensor(A21Entity, SensorEntity):
+    """Date and time the clock of the unit shows.
+
+    Off by default: it changes at every reading, which fills the recorder
+    for something the drift sensor already tells.
+    """
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(self, coordinator: A21Coordinator) -> None:
+        """Initialise the clock sensor."""
+        super().__init__(coordinator, "machine_clock")
+
+    @property
+    def native_value(self) -> datetime | None:
+        """Return the clock of the unit, taken as local time."""
+        clock = read_clock(self.coordinator.data)
+        if clock is None:
+            return None
+        return clock.replace(tzinfo=dt_util.get_default_time_zone())
+
+
+class A21ClockDriftSensor(A21Entity, SensorEntity):
+    """How far the clock of the unit is from Home Assistant's time.
+
+    Positive when the unit is ahead. A unit left on summer time reads
+    3600 s once winter time has started.
+    """
+
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 0
+    _attr_icon = "mdi:clock-alert-outline"
+
+    def __init__(self, coordinator: A21Coordinator) -> None:
+        """Initialise the drift sensor."""
+        super().__init__(coordinator, "clock_drift")
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the drift in seconds, as worked out at the last reading."""
+        drift = self.coordinator.clock_drift
+        return None if drift is None else round(drift)
 
 
 class A21LinkHiccupsSensor(A21Entity, SensorEntity):

@@ -36,6 +36,7 @@ from .api import A21Data
 # Units spelled out: the CONCENTRATION_* constants were deprecated in 2026.
 MICROGRAMS_PER_CUBIC_METER = "μg/m³"
 PARTS_PER_MILLION = "ppm"
+from .clock import HR_RTC_MONTH_YEAR, MAX_CLOCK_TOLERANCE, MIN_CLOCK_TOLERANCE
 from .const import (
     CL_EXT_CO2_CTRL,
     CL_EXT_PM25_CTRL,
@@ -573,6 +574,11 @@ async def async_setup_entry(
             *(A21FilterStockNumber(coordinator, cls) for cls in CLASSES),
             A21FilterReminderNumber(coordinator),
             A21FlowToleranceNumber(coordinator),
+            *(
+                [A21ClockToleranceNumber(coordinator)]
+                if coordinator.data.hr(HR_RTC_MONTH_YEAR) is not None
+                else []
+            ),
         ]
     )
 
@@ -613,6 +619,38 @@ class A21FlowToleranceNumber(A21Entity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """Change the tolerance."""
         self.coordinator.settings.set_flow_tolerance(int(value))
+
+
+class A21ClockToleranceNumber(A21Entity, NumberEntity):
+    """Drift of the clock tolerated before it is set again, in minutes."""
+
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_native_min_value = MIN_CLOCK_TOLERANCE
+    _attr_native_max_value = MAX_CLOCK_TOLERANCE
+    _attr_native_step = 1
+    _attr_native_unit_of_measurement = UnitOfTime.MINUTES
+    _attr_mode = NumberMode.BOX
+    _attr_icon = "mdi:clock-alert-outline"
+
+    def __init__(self, coordinator: A21Coordinator) -> None:
+        """Initialise the tolerance setting."""
+        super().__init__(coordinator, "clock_tolerance")
+
+    async def async_added_to_hass(self) -> None:
+        """Follow the setting."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self.coordinator.settings.async_add_listener(self.async_write_ha_state)
+        )
+
+    @property
+    def native_value(self) -> float:
+        """Return the tolerated drift in minutes."""
+        return self.coordinator.settings.clock_tolerance
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Change the tolerance."""
+        self.coordinator.settings.set_clock_tolerance(int(value))
 
 
 class A21FilterReminderNumber(A21Entity, NumberEntity):

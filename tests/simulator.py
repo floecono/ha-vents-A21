@@ -135,6 +135,8 @@ class A21Simulator:
         # Accept connections but never answer: the frozen module.
         self.frozen = False
         self.requests: list[tuple[int, int, int]] = []
+        # False: a firmware that refuses function 16 (illegal function).
+        self.block_writes = True
         self._clients: set[asyncio.StreamWriter] = set()
         self._server: asyncio.Server | None = None
 
@@ -183,6 +185,17 @@ class A21Simulator:
 
     def _handle(self, pdu: bytes) -> bytes:
         function = pdu[0]
+        if function == 16 and self.block_writes and len(pdu) >= 6:
+            address, count, size = struct.unpack(">HHB", pdu[1:6])
+            if size != 2 * count or len(pdu) != 6 + size or not 1 <= count <= 123:
+                return bytes([function | 0x80, 3])
+            if address + count > len(self.holdings):
+                return bytes([function | 0x80, 2])
+            self.requests.append((function, address, count))
+            self.holdings[address : address + count] = struct.unpack(
+                f">{count}H", pdu[6:]
+            )
+            return pdu[:5]
         if function not in (1, 2, 3, 4, 5, 6) or len(pdu) != 5:
             return bytes([function | 0x80, 1])
         address, value = struct.unpack(">HH", pdu[1:5])

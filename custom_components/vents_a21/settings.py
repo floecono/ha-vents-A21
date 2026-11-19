@@ -12,6 +12,11 @@ from typing import Any, Final
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
 
+from .clock import (
+    DEFAULT_CLOCK_TOLERANCE,
+    MAX_CLOCK_TOLERANCE,
+    MIN_CLOCK_TOLERANCE,
+)
 from .const import DOMAIN
 
 STORAGE_VERSION: Final = 1
@@ -33,6 +38,10 @@ class UnitSettings:
             hass, STORAGE_VERSION, f"{DOMAIN}.{entry_id}.settings"
         )
         self.flow_tolerance: int = DEFAULT_FLOW_TOLERANCE
+        # Keep the clock of the unit on Home Assistant's time: off unless
+        # the owner asks, since it writes to the unit on its own.
+        self.clock_sync: bool = False
+        self.clock_tolerance: int = DEFAULT_CLOCK_TOLERANCE
         self._listeners: set[Callable[[], None]] = set()
 
     async def async_load(self) -> None:
@@ -43,6 +52,18 @@ class UnitSettings:
         self.flow_tolerance = self._clamp(
             data.get("flow_tolerance", DEFAULT_FLOW_TOLERANCE)
         )
+        self.clock_sync = bool(data.get("clock_sync", False))
+        self.clock_tolerance = self._clamp_minutes(
+            data.get("clock_tolerance", DEFAULT_CLOCK_TOLERANCE)
+        )
+
+    @staticmethod
+    def _clamp_minutes(value: Any) -> int:
+        try:
+            minutes = int(value)
+        except (TypeError, ValueError):
+            return DEFAULT_CLOCK_TOLERANCE
+        return min(max(minutes, MIN_CLOCK_TOLERANCE), MAX_CLOCK_TOLERANCE)
 
     @staticmethod
     def _clamp(value: Any) -> int:
@@ -59,9 +80,28 @@ class UnitSettings:
         return lambda: self._listeners.discard(listener)
 
     def _changed(self) -> None:
-        self._store.async_delay_save(lambda: {"flow_tolerance": self.flow_tolerance}, 1)
+        self._store.async_delay_save(self._to_dict, 1)
         for listener in list(self._listeners):
             listener()
+
+    def _to_dict(self) -> dict[str, Any]:
+        return {
+            "flow_tolerance": self.flow_tolerance,
+            "clock_sync": self.clock_sync,
+            "clock_tolerance": self.clock_tolerance,
+        }
+
+    @callback
+    def set_clock_sync(self, enabled: bool) -> None:
+        """Switch the automatic setting of the clock on or off."""
+        self.clock_sync = bool(enabled)
+        self._changed()
+
+    @callback
+    def set_clock_tolerance(self, minutes: int) -> None:
+        """Set the drift tolerated before the clock is set, in minutes."""
+        self.clock_tolerance = self._clamp_minutes(minutes)
+        self._changed()
 
     @callback
     def set_flow_tolerance(self, percent: int) -> None:

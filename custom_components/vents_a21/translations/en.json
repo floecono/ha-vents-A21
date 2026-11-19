@@ -305,6 +305,12 @@
       },
       "flow_ratio": {
         "name": "Extract/supply flow ratio"
+      },
+      "machine_clock": {
+        "name": "Unit clock"
+      },
+      "clock_drift": {
+        "name": "Clock drift"
       }
     },
     "binary_sensor": {
@@ -402,6 +408,9 @@
       },
       "water_auto_restart": {
         "name": "Automatic restart after a return water fault"
+      },
+      "clock_sync": {
+        "name": "Automatic clock setting"
       }
     },
     "button": {
@@ -688,6 +697,9 @@
       },
       "flow_imbalance_tolerance": {
         "name": "Tolerated flow imbalance"
+      },
+      "clock_tolerance": {
+        "name": "Clock tolerance"
       }
     }
   },

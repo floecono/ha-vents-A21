@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import A21Data
+from .clock import HR_RTC_MONTH_YEAR
 from .const import (
     CL_10V_SENSOR_CTRL,
     CL_BOOST_SWITCH_CTRL,
@@ -100,12 +101,54 @@ async def async_setup_entry(
 ) -> None:
     """Set up the switches the firmware exposes."""
     coordinator = entry.runtime_data
-    async_add_entities(
+    entities: list[SwitchEntity] = [
         A21Switch(coordinator, description)
         for description in SWITCHES
         if coordinator.data.coil(description.coil) is not None
         and description.exists_fn(coordinator.data)
-    )
+    ]
+    if coordinator.data.hr(HR_RTC_MONTH_YEAR) is not None:
+        entities.append(A21ClockSyncSwitch(coordinator))
+    async_add_entities(entities)
+
+
+class A21ClockSyncSwitch(A21Entity, SwitchEntity):
+    """Keep the clock of the unit on Home Assistant's time.
+
+    The weekly schedule follows the clock of the unit, which drifts and
+    ignores the change between summer and winter time. On, the clock is
+    set to Home Assistant's local time whenever it is off by more than the
+    tolerance, once an hour at most. Off by default: nothing is written to
+    the unit unless the owner asks.
+    """
+
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_icon = "mdi:clock-check-outline"
+
+    def __init__(self, coordinator: A21Coordinator) -> None:
+        """Initialise the switch."""
+        super().__init__(coordinator, "clock_sync")
+
+    async def async_added_to_hass(self) -> None:
+        """Follow the setting."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self.coordinator.settings.async_add_listener(self.async_write_ha_state)
+        )
+
+    @property
+    def is_on(self) -> bool:
+        """Return True when the clock is kept on time."""
+        return self.coordinator.settings.clock_sync
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Keep the clock on time, starting with the next reading."""
+        self.coordinator.settings.set_clock_sync(True)
+        await self.coordinator.async_request_refresh()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Leave the clock alone."""
+        self.coordinator.settings.set_clock_sync(False)
 
 
 class A21Switch(A21Entity, SwitchEntity):

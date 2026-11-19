@@ -11,27 +11,16 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
-from .api import CoilWrite, RegisterWrite, Write
+from .api import CoilWrite, Write
+from .clock import HR_RTC_MONTH_YEAR, clock_write
 from .const import CL_RESET_ALARM, CL_RESET_FILTER_TIMER
 from .coordinator import A21ConfigEntry, A21Coordinator
 from .entity import A21Entity
 
-# Clock of the controller: four holding registers of two bytes each.
-HR_RTC_MIN_SEC = 61  # high byte: minutes, low byte: seconds
-HR_RTC_HOURS = 62  # low byte: hours
-HR_RTC_DAY_WEEKDAY = 63  # high byte: day of the month, low byte: weekday 1-7
-HR_RTC_MONTH_YEAR = 64  # high byte: month, low byte: year on two digits
-
 
 def _clock_writes() -> list[Write]:
     """Return the writes setting the controller clock to the local time."""
-    now = dt_util.now()
-    return [
-        RegisterWrite(HR_RTC_MIN_SEC, now.minute << 8 | now.second),
-        RegisterWrite(HR_RTC_HOURS, now.hour),
-        RegisterWrite(HR_RTC_DAY_WEEKDAY, now.day << 8 | now.isoweekday()),
-        RegisterWrite(HR_RTC_MONTH_YEAR, now.month << 8 | now.year % 100),
-    ]
+    return [clock_write(dt_util.now())]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -55,8 +44,6 @@ BUTTONS: tuple[A21ButtonDescription, ...] = (
         writes_fn=lambda: [CoilWrite(CL_RESET_ALARM, True)],
         needs_coil=CL_RESET_ALARM,
     ),
-    # Byte layout of the clock registers confirmed on a DF 350 Connect
-    # (firmware of 2022-07-07): the written time read back correctly.
     A21ButtonDescription(
         key="set_clock",
         writes_fn=_clock_writes,

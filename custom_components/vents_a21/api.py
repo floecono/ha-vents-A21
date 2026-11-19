@@ -42,6 +42,7 @@ from .const import (
 )
 from .modbus import (
     EXC_ILLEGAL_DATA_ADDRESS,
+    EXC_ILLEGAL_FUNCTION,
     ModbusConnectionError,
     ModbusError,
     ModbusExceptionResponse,
@@ -99,7 +100,20 @@ class RegisterWrite:
     value: int
 
 
-Write = CoilWrite | RegisterWrite
+@dataclass(frozen=True, slots=True)
+class RegistersWrite:
+    """Write consecutive holding registers in a single frame (function 16).
+
+    For values that only make sense together, like the clock: written one
+    register at a time, a change of minute between two writes would leave
+    an inconsistent time.
+    """
+
+    address: int
+    values: tuple[int, ...]
+
+
+Write = CoilWrite | RegisterWrite | RegistersWrite
 
 
 def _signed(value: int) -> int:
@@ -401,6 +415,8 @@ class A21Api:
         self.port = port
         self._client = ModbusTcpClient(host, port, unit_id)
         self._lock = asyncio.Lock()
+        # Function 16 until a firmware refuses it (see _write_block).
+        self._block_writes = True
         self.keep_connection = keep_connection
         # Alarm codes left out of every snapshot (see CONF_MANUAL_BYPASS).
         self.ignored_codes: frozenset[int] = frozenset()
@@ -452,15 +468,34 @@ class A21Api:
                 for write in writes:
                     if isinstance(write, CoilWrite):
                         await self._client.write_coil(write.address, write.value)
+                    elif isinstance(write, RegistersWrite):
+                        await self._write_block(write)
                     else:
-                        await self._client.write_register(
-                            write.address, write.value
-                        )
+                        await self._client.write_register(write.address, write.value)
                 await asyncio.sleep(_SETTLE_DELAY)
                 return await self._read_all()
             finally:
                 if not self.keep_connection:
                     await self._client.close()
+
+    async def _write_block(self, write: RegistersWrite) -> None:
+        """Write a block in one frame, or register by register if refused.
+
+        The table lists function 16 for holding registers; a firmware that
+        answers "illegal function" all the same gets the registers one at a
+        time from then on.
+        """
+        if self._block_writes:
+            try:
+                await self._client.write_registers(write.address, write.values)
+            except ModbusExceptionResponse as err:
+                if err.code != EXC_ILLEGAL_FUNCTION:
+                    raise
+                self._block_writes = False
+            else:
+                return
+        for offset, value in enumerate(write.values):
+            await self._client.write_register(write.address + offset, value)
 
     @property
     def stats(self) -> dict:

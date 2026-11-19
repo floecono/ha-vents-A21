@@ -305,6 +305,12 @@
       },
       "flow_ratio": {
         "name": "Rapport de débits extraction/soufflage"
+      },
+      "machine_clock": {
+        "name": "Horloge de la machine"
+      },
+      "clock_drift": {
+        "name": "Dérive de l'horloge"
       }
     },
     "binary_sensor": {
@@ -402,6 +408,9 @@
       },
       "water_auto_restart": {
         "name": "Redémarrage automatique après défaut de retour d'eau"
+      },
+      "clock_sync": {
+        "name": "Réglage automatique de l'horloge"
       }
     },
     "button": {
@@ -688,6 +697,9 @@
       },
       "flow_imbalance_tolerance": {
         "name": "Déséquilibre de débits toléré"
+      },
+      "clock_tolerance": {
+        "name": "Tolérance de l'horloge"
       }
     }
   },

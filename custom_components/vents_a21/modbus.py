@@ -11,6 +11,7 @@ Only the functions the A21 controller supports are implemented
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 import socket
 import struct
 import time
@@ -22,6 +23,7 @@ FC_READ_HOLDING_REGISTERS = 0x03
 FC_READ_INPUT_REGISTERS = 0x04
 FC_WRITE_SINGLE_COIL = 0x05
 FC_WRITE_SINGLE_REGISTER = 0x06
+FC_WRITE_MULTIPLE_REGISTERS = 0x10
 
 EXC_ILLEGAL_FUNCTION = 1
 EXC_ILLEGAL_DATA_ADDRESS = 2
@@ -54,7 +56,11 @@ class ConnectionStats:
 
     def as_dict(self) -> dict:
         """Return the counters as plain values."""
-        age = None if self.connected_since is None else round(time.monotonic() - self.connected_since)
+        age = (
+            None
+            if self.connected_since is None
+            else round(time.monotonic() - self.connected_since)
+        )
         return {
             "connections": self.connections,
             "connection_age_s": age,
@@ -260,6 +266,20 @@ class ModbusTcpClient:
         """Write one holding register (function 6)."""
         await self._request(
             struct.pack(">BHH", FC_WRITE_SINGLE_REGISTER, address, value & 0xFFFF)
+        )
+
+    async def write_registers(self, address: int, values: Sequence[int]) -> None:
+        """Write consecutive holding registers in one frame (function 16)."""
+        count = len(values)
+        await self._request(
+            struct.pack(
+                f">BHHB{count}H",
+                FC_WRITE_MULTIPLE_REGISTERS,
+                address,
+                count,
+                2 * count,
+                *(value & 0xFFFF for value in values),
+            )
         )
 
 
