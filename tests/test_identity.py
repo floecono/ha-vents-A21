@@ -145,3 +145,25 @@ async def test_serial_survives_a_silent_reload(
     device = dr.async_get(hass).async_get_device({("vents_a21", entry.entry_id)})
     assert device is not None
     assert device.serial_number == "0020003A3032510E"
+
+
+async def test_unreadable_answer_never_carries_its_bytes(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The answer echoes the device password: only its length is kept."""
+    # A frame with the password in it and a checksum that does not match.
+    garbled = ANSWER[:-1] + bytes([ANSWER[-1] ^ 0xFF])
+    assert b"1111" in garbled
+
+    async def exchange(*_args: object) -> bytes:
+        return garbled
+
+    monkeypatch.setattr(identity, "_async_exchange", exchange)
+    caplog.set_level("DEBUG")
+    probe = await identity.async_probe("192.0.2.1", "1111")
+    assert probe == {"unreadable": f"{len(garbled)} bytes"}
+    assert await identity.async_read_identifier("192.0.2.1", "1111") is None
+    assert "Unreadable identifier answer" in caplog.text
+    for secret in (garbled.hex(), b"1111".hex(), "1111"):
+        assert secret not in caplog.text
+        assert secret not in str(probe)

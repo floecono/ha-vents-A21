@@ -33,10 +33,8 @@ async def test_user_flow(hass: HomeAssistant, simulator: A21Simulator) -> None:
     )
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {}
-    # The shop link is a placeholder: translations must not contain URLs.
-    assert result["description_placeholders"]["shop_url"].startswith(
-        "https://www.econology.fr/?utm_source=home-assistant"
-    )
+    # No shop or referral link in a set-up dialog: those stay in the README.
+    assert not result.get("description_placeholders")
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], form(simulator.port)

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from pathlib import Path
 
 from homeassistant.components.frontend import DATA_EXTRA_MODULE_URL
@@ -51,8 +53,14 @@ async def test_resource_follows_the_version(hass: HomeAssistant, entry: MockConf
 
 async def test_diagnostics(hass: HomeAssistant, entry: MockConfigEntry) -> None:
     """Diagnostics carry the raw tables, without the address or the password."""
+    hass.config_entries.async_update_entry(
+        entry, data={**entry.data, "device_password": "s3cret"}
+    )
     diagnostics = await async_get_config_entry_diagnostics(hass, entry)
     assert diagnostics["entry"]["data"]["host"] == "**REDACTED**"
+    # Not the password of the unit either, wherever it sits in the file.
+    assert diagnostics["entry"]["data"]["device_password"] == "**REDACTED**"
+    assert "s3cret" not in json.dumps(diagnostics)
     assert diagnostics["firmware"] == "2.15 (2023-04-18)"
     assert diagnostics["input_registers"]["37"] == 1
     assert diagnostics["holding_registers"]["44"] == 23

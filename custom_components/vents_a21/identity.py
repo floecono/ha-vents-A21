@@ -154,7 +154,10 @@ async def async_read_identifier(
         return None
     identifier = parse_identifier(answer)
     if identifier is None:
-        _LOGGER.debug("Unreadable identifier answer from %s: %s", host, answer.hex())
+        # Never the bytes themselves: the answer echoes the device password.
+        _LOGGER.debug(
+            "Unreadable identifier answer from %s (%d bytes)", host, len(answer)
+        )
     return identifier
 
 
@@ -180,7 +183,7 @@ async def async_probe(
         return None
     parsed = parse_answer(answer)
     if parsed is None:
-        return {"raw": answer.hex()}
+        return _unreadable(answer)
     _, values = parsed
     result: dict[str, str] = {}
     if ident := values.get(_PARAM_SEARCH):
@@ -193,4 +196,13 @@ async def async_probe(
             result["firmware"] = f"{fw[0]}.{fw[1]} ({fw[2]:02d}/{fw[3]:02d}/{year})"
         else:
             result["firmware"] = fw.hex()
-    return result or {"raw": answer.hex()}
+    return result or _unreadable(answer)
+
+
+def _unreadable(answer: bytes) -> dict[str, str]:
+    """Say that the module answered something that could not be read.
+
+    Only its length: the answer echoes the device password, so its bytes
+    must not reach a log, an entity attribute or a diagnostics file.
+    """
+    return {"unreadable": f"{len(answer)} bytes"}

@@ -198,7 +198,6 @@ def _shop(path: str) -> str:
 
 
 # Shop home page, shown in the setup form.
-SHOP_HOME_URL: Final = _shop("")
 
 
 # Optional probes, suggested when the unit does not have them.
